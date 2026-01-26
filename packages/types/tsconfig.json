@@ -1,0 +1,6 @@
+{
+    "extends": "@csmac/config/tsconfig.json",
+    "include": [
+        "src"
+    ]
+}

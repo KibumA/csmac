@@ -1,0 +1,21 @@
+{
+  "name": "csmac-monorepo",
+  "private": true,
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "format": "prettier --write \"**/*.{ts,tsx,md}\""
+  },
+  "devDependencies": {
+    "prettier": "latest",
+    "turbo": "latest"
+  },
+  "packageManager": "pnpm@8.15.1",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@babel/runtime": "^7.28.6"
+  }
+}
