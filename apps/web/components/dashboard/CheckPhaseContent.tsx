@@ -2,8 +2,11 @@
 
 import React from 'react';
 import { colors, thStyle, tdStyle, tpoTag } from '../../styles/theme';
+import { usePDCA } from '../../context/PDCAContext';
 
 export default function CheckPhaseContent({ colors: _colors }: { colors: any }) {
+    const { inspectionResults, registeredTpos, teams } = usePDCA();
+
     return (
         <>
             <header style={{ marginBottom: '30px' }}>
@@ -13,51 +16,75 @@ export default function CheckPhaseContent({ colors: _colors }: { colors: any }) 
             </header>
 
             {/* Checklist Table (Slide 6-style) */}
-            <table style={{ width: '100%', borderCollapse: 'collapse', border: `1px solid ${colors.border}` }}>
-                <thead>
-                    <tr style={{ backgroundColor: colors.headerBlue }}>
-                        <th style={thStyle}>사업장/직무/업무</th>
-                        <th style={thStyle}>TPO (상황)</th>
-                        <th style={thStyle}>점검 체크리스트</th>
-                        <th style={thStyle}>점검 항목</th>
-                        <th style={thStyle}>이행근거 / 검증방법</th>
-                        <th style={thStyle}>수행자</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {[1, 2].map(i => (
-                        <tr key={i}>
-                            <td style={tdStyle}>
-                                <div style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>소노벨 천안 / 객실팀</div>
-                                <div style={{ fontSize: '0.85rem', color: colors.textGray }}>인스펙터 / 객실 인스펙션</div>
-                            </td>
-                            <td style={tdStyle}>
-                                <div style={tpoTag}>정비 직후 / 인스펙션 룸</div>
-                            </td>
-                            <td style={tdStyle}>
-                                <div style={{ fontSize: '0.9rem' }}>베드 메이킹 상태가 주름 없이 팽팽하게 완료되었나요?</div>
-                            </td>
-                            <td style={tdStyle}>
-                                <div style={{ fontSize: '0.85rem' }}>
-                                    • 시트 오염 없음<br />
-                                    • 베개 정렬 상태<br />
-                                    • 러너 배치 확인
-                                </div>
-                            </td>
-                            <td style={tdStyle}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                    <span style={{ fontSize: '1.2rem' }}>🖼️</span>
-                                    <span style={{ fontSize: '0.8rem', backgroundColor: '#EEEEEE', padding: '2px 5px', borderRadius: '3px' }}>AI 검증</span>
-                                </div>
-                            </td>
-                            <td style={tdStyle}>
-                                <div style={{ fontWeight: 'bold' }}>박OO</div>
-                                <div style={{ fontSize: '0.8rem', color: '#2E7D32' }}>이행완료 (14:20)</div>
-                            </td>
+            <div style={{ backgroundColor: 'white', borderRadius: '12px', border: `1px solid ${colors.border}`, overflow: 'hidden' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                        <tr style={{ backgroundColor: colors.headerBlue }}>
+                            <th style={thStyle}>사업장/직무/업무</th>
+                            <th style={thStyle}>TPO (상황)</th>
+                            <th style={thStyle}>점검 체크리스트</th>
+                            <th style={thStyle}>결과 / 이행근거</th>
+                            <th style={thStyle}>수행자</th>
                         </tr>
-                    ))}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        {inspectionResults.length > 0 ? (
+                            inspectionResults.map((record) => {
+                                const tpoInfo = registeredTpos.find(t => t.id === record.tpoId);
+                                return (
+                                    <tr key={record.id} style={{ borderBottom: `1px solid ${colors.border}`, backgroundColor: record.status === 'X' ? '#FFF8F8' : 'white' }}>
+                                        <td style={tdStyle}>
+                                            <div style={{ fontWeight: 'bold', fontSize: '0.9rem', color: colors.primaryBlue }}>{tpoInfo?.workplace || '소노벨 천안'}</div>
+                                            <div style={{ fontSize: '0.85rem', color: colors.textGray }}>
+                                                {teams[tpoInfo?.team || '']?.label || '객실팀'} / {record.role}
+                                            </div>
+                                        </td>
+                                        <td style={tdStyle}>
+                                            <div style={tpoTag}>{tpoInfo?.tpo.place} / {tpoInfo?.tpo.occasion}</div>
+                                        </td>
+                                        <td style={tdStyle}>
+                                            <div style={{ fontSize: '0.9rem', fontWeight: record.status === 'X' ? 'bold' : 'normal' }}>{record.item}</div>
+                                            {record.reason && <div style={{ fontSize: '0.8rem', color: '#D32F2F', marginTop: '4px' }}>└ {record.reason}</div>}
+                                        </td>
+                                        <td style={tdStyle}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                <span style={{
+                                                    display: 'inline-block',
+                                                    width: '24px',
+                                                    height: '24px',
+                                                    lineHeight: '24px',
+                                                    borderRadius: '50%',
+                                                    backgroundColor: record.status === 'O' ? '#E8F5E9' : '#FFEBEE',
+                                                    color: record.status === 'O' ? '#2E7D32' : '#D32F2F',
+                                                    fontWeight: 'bold',
+                                                    textAlign: 'center',
+                                                    fontSize: '0.85rem'
+                                                }}>
+                                                    {record.status}
+                                                </span>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                                    <span style={{ fontSize: '1.1rem' }}>🖼️</span>
+                                                    <span style={{ fontSize: '0.75rem', color: colors.primaryBlue, textDecoration: 'underline' }}>AI 검증</span>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td style={tdStyle}>
+                                            <div style={{ fontWeight: 'bold' }}>{record.name}</div>
+                                            <div style={{ fontSize: '0.8rem', color: colors.textGray }}>{record.time}</div>
+                                        </td>
+                                    </tr>
+                                );
+                            })
+                        ) : (
+                            <tr>
+                                <td colSpan={5} style={{ padding: '50px', textAlign: 'center', color: colors.textGray }}>
+                                    검증할 데이터가 없습니다. Do 단계에서 업무를 완료해 주세요.
+                                </td>
+                            </tr>
+                        )}
+                    </tbody>
+                </table>
+            </div>
         </>
     );
 }

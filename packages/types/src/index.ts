@@ -109,3 +109,16 @@ export interface InspectionRecord {
     reason?: string;
     tpoId: number;
 }
+export interface ActionPlanItem {
+    id: number;
+    inspectionId: number;
+    team: string;
+    area: string;
+    category: string;
+    issue: string;
+    reason: string;
+    timestamp: string;
+    status: 'pending' | 'in_progress' | 'completed' | 'impossible';
+    cause?: string;
+    solution?: string;
+}

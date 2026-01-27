@@ -3,9 +3,11 @@
 import React from 'react';
 import { usePDCA } from '../../context/PDCAContext';
 import { colors } from '../../styles/theme';
+import Modal from '../shared/Modal';
+import ConcernPopup from '../dashboard/ConcernPopup';
 
 export default function Sidebar() {
-    const { activePhase, setActivePhase } = usePDCA();
+    const { activePhase, setActivePhase, showConcernPopup, setShowConcernPopup } = usePDCA();
 
     return (
         <aside style={{ width: '240px', backgroundColor: colors.sidebarBg, borderRight: `1px solid ${colors.border}`, display: 'flex', flexDirection: 'column' }}>
@@ -13,7 +15,20 @@ export default function Sidebar() {
                 <div style={{ backgroundColor: colors.primaryBlue, color: 'white', padding: '10px', fontSize: '1.4rem', fontWeight: 'bold', borderRadius: '4px' }}>CS MAC</div>
             </div>
             <nav style={{ flex: 1, padding: '0 10px', marginTop: '20px' }}>
-                <div style={{ color: colors.primaryBlue, padding: '15px 10px', fontWeight: 'bold' }}>PDCA</div>
+                <div
+                    onClick={() => setShowConcernPopup(true)}
+                    style={{
+                        color: colors.primaryBlue,
+                        padding: '15px 10px',
+                        fontWeight: 'bold',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '5px'
+                    }}
+                >
+                    PDCA
+                </div>
                 <ul style={{ listStyle: 'none', padding: 0 }}>
                     {(['plan', 'do', 'check', 'act'] as const).map(phase => (
                         <li
@@ -35,6 +50,14 @@ export default function Sidebar() {
                     ))}
                 </ul>
             </nav>
+
+            <Modal
+                isOpen={showConcernPopup}
+                onClose={() => setShowConcernPopup(false)}
+                title="고민"
+            >
+                <ConcernPopup />
+            </Modal>
         </aside>
     );
 }

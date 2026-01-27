@@ -69,13 +69,15 @@ export default function PlanPhaseContent() {
                             value={team}
                             onChange={(e) => {
                                 const newTeam = e.target.value;
-                                setTeam(newTeam);
-                                setJob(teams[newTeam].jobs[0]);
+                                if (teams[newTeam]) {
+                                    setTeam(newTeam);
+                                    setJob(teams[newTeam].jobs[0]);
+                                }
                             }}
                         >
-                            <option value="front">프론트</option>
-                            <option value="housekeeping">객실관리</option>
-                            <option value="facility">시설</option>
+                            {Object.entries(teams).map(([key, info]) => (
+                                <option key={key} value={key}>{info.label}</option>
+                            ))}
                         </select>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>

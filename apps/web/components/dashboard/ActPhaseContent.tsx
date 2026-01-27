@@ -2,8 +2,12 @@
 
 import React from 'react';
 import { colors, statCardStyle } from '../../styles/theme';
+import { usePDCA } from '../../context/PDCAContext';
 
 export default function ActPhaseContent({ colors: _colors }: { colors: any }) {
+    const { stats, inspectionResults } = usePDCA();
+    const nonCompliantRecords = inspectionResults.filter(r => r.status === 'X');
+
     return (
         <>
             <header style={{ marginBottom: '30px' }}>
@@ -15,33 +19,45 @@ export default function ActPhaseContent({ colors: _colors }: { colors: any }) {
             <div style={{ display: 'flex', gap: '20px', marginBottom: '40px' }}>
                 <div style={statCardStyle}>
                     <div style={{ fontSize: '0.9rem', color: colors.textGray, marginBottom: '10px' }}>전체 준수율</div>
-                    <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: colors.primaryBlue }}>94.2%</div>
-                    <div style={{ fontSize: '0.8rem', color: '#2E7D32', marginTop: '5px' }}>▲ 2.1% (전주 대비)</div>
+                    <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: colors.primaryBlue }}>{stats.complianceRate}%</div>
+                    <div style={{ fontSize: '0.8rem', color: '#2E7D32', marginTop: '5px' }}>실시간 집계 중</div>
                 </div>
                 <div style={statCardStyle}>
                     <div style={{ fontSize: '0.9rem', color: colors.textGray, marginBottom: '10px' }}>미준수 발생</div>
-                    <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: '#D32F2F' }}>12건</div>
-                    <div style={{ fontSize: '0.8rem', color: '#D32F2F', marginTop: '5px' }}>▼ 3건 (전주 대비)</div>
+                    <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: '#D32F2F' }}>{stats.nonCompliantCount}건</div>
+                    <div style={{ fontSize: '0.8rem', color: '#D32F2F', marginTop: '5px' }}>즉시 조치 필요</div>
                 </div>
                 <div style={statCardStyle}>
                     <div style={{ fontSize: '0.9rem', color: colors.textGray, marginBottom: '10px' }}>개선 조치율</div>
-                    <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: colors.textDark }}>100%</div>
-                    <div style={{ fontSize: '0.8rem', color: colors.textGray, marginTop: '5px' }}>지연 항목 없음</div>
+                    <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: colors.textDark }}>0%</div>
+                    <div style={{ fontSize: '0.8rem', color: colors.textGray, marginTop: '5px' }}>{stats.nonCompliantCount}개 항목 미조치</div>
                 </div>
             </div>
 
             <div style={{ border: `1px solid ${colors.border}`, borderRadius: '12px', padding: '30px', backgroundColor: '#F8F9FB' }}>
-                <div style={{ marginBottom: '20px', fontWeight: 'bold' }}>주요 개선 리포트</div>
+                <div style={{ marginBottom: '20px', fontWeight: 'bold', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span>실시간 미준수 조치 알림</span>
+                    <span style={{ fontSize: '0.8rem', color: '#D32F2F' }}>{nonCompliantRecords.length}건 대기 중</span>
+                </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                    {[1, 2].map(i => (
-                        <div key={i} style={{ backgroundColor: 'white', padding: '15px', borderRadius: '8px', borderLeft: `5px solid ${colors.primaryBlue}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <div>
-                                <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>[객실팀] 베드 메이킹 품질 표준화 가이드 배포</div>
-                                <div style={{ fontSize: '0.85rem', color: colors.textGray }}>반복적인 주름 발생 이슈를 해결하기 위해 시연 영상 및 가이드북이 업데이트 되었습니다.</div>
+                    {nonCompliantRecords.length > 0 ? (
+                        nonCompliantRecords.map((record) => (
+                            <div key={record.id} style={{ backgroundColor: 'white', padding: '15px', borderRadius: '8px', borderLeft: `5px solid #D32F2F`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+                                <div>
+                                    <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>[{record.role}] {record.item} - 미준수</div>
+                                    <div style={{ fontSize: '0.85rem', color: colors.textGray }}>
+                                        발생 장소: {record.area} | 발생 시각: {record.time}
+                                        {record.reason && <div style={{ color: '#D32F2F', marginTop: '4px' }}>이유: {record.reason}</div>}
+                                    </div>
+                                </div>
+                                <button style={{ padding: '8px 15px', borderRadius: '6px', border: `1px solid #D32F2F`, color: '#D32F2F', backgroundColor: 'white', fontWeight: 'bold', cursor: 'pointer' }}>조치하기</button>
                             </div>
-                            <button style={{ padding: '8px 15px', borderRadius: '6px', border: `1px solid ${colors.primaryBlue}`, color: colors.primaryBlue, backgroundColor: 'white', fontWeight: 'bold', cursor: 'pointer' }}>보고서 보기</button>
+                        ))
+                    ) : (
+                        <div style={{ textAlign: 'center', padding: '30px', color: colors.textGray }}>
+                            현재 미준수 발생 항목이 없습니다. 우수한 서비스 상태를 유지 중입니다.
                         </div>
-                    ))}
+                    )}
                 </div>
             </div>
         </>

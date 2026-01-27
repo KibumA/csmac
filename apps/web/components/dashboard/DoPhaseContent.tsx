@@ -10,24 +10,27 @@ export default function DoPhaseContent() {
         activeDoSubPhase,
         setActiveDoSubPhase,
         inspectionResults, addInspectionResult,
-        registeredTpos
+        registeredTpos,
+        actionPlanItems, updateActionPlanItem,
+        workplace, setWorkplace,
+        team, setTeam,
+        job, setJob,
+        teams
     } = usePDCA();
 
-    const [activeJobFilter, setActiveJobFilter] = useState('지배인');
-    const [localWorkplace, setLocalWorkplace] = useState('소노벨 천안');
-    const [localTeam, setLocalTeam] = useState('프론트');
+    const [selectedSopId, setSelectedSopId] = useState<number | null>(null);
+    const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>({});
 
-    const teamJobMap: { [key: string]: string[] } = {
-        '프론트': ['지배인', '리셉션', '컨시어즈'],
-        '객실관리': ['인스펙터', '룸메이드'],
-        '시설': ['시설담당', '정비팀']
-    };
+    const selectedSop = registeredTpos.find(t => t.id === selectedSopId);
 
-    const currentJobs = teamJobMap[localTeam] || [];
+    // Use jobs from the global teams mapping
+    const currentJobs = teams[team]?.jobs || [];
 
     useEffect(() => {
-        if (currentJobs[0]) setActiveJobFilter(currentJobs[0]);
-    }, [localTeam]);
+        if (currentJobs[0] && !currentJobs.includes(job)) {
+            setJob(currentJobs[0]);
+        }
+    }, [team, currentJobs]);
 
     const subPhases = [
         { id: 'instruction', label: '업무지시 보드' },
@@ -74,20 +77,20 @@ export default function DoPhaseContent() {
                         <div style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>업무지시 보드</div>
                         <select
                             style={selectStyle}
-                            value={localWorkplace}
-                            onChange={(e) => setLocalWorkplace(e.target.value)}
+                            value={workplace}
+                            onChange={(e) => setWorkplace(e.target.value)}
                         >
                             <option value="소노벨 천안">소노벨 천안</option>
                             <option value="소노벨 경주">소노벨 경주</option>
                         </select>
                         <select
                             style={selectStyle}
-                            value={localTeam}
-                            onChange={(e) => setLocalTeam(e.target.value)}
+                            value={team}
+                            onChange={(e) => setTeam(e.target.value)}
                         >
-                            <option value="프론트">프론트</option>
-                            <option value="객실관리">객실관리</option>
-                            <option value="시설">시설</option>
+                            {Object.entries(teams).map(([key, info]) => (
+                                <option key={key} value={key}>{info.label}</option>
+                            ))}
                         </select>
                     </div>
 
@@ -102,7 +105,7 @@ export default function DoPhaseContent() {
                         marginBottom: '30px',
                         boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
                     }}>
-                        <div style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>{localTeam}</div>
+                        <div style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>{teams[team]?.label}</div>
                         <div style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>팀원 수 12명</div>
                         <div style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>오늘 근무자 수 9명</div>
                         <div style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>오늘 <span style={{ color: '#FFCDD2', textDecoration: 'underline' }}>휴무자 수</span> 3명</div>
@@ -130,15 +133,15 @@ export default function DoPhaseContent() {
                             return (
                                 <div
                                     key={`header-${colIdx}`}
-                                    onClick={() => setActiveJobFilter(jobName)}
+                                    onClick={() => setJob(jobName)}
                                     style={{
-                                        border: activeJobFilter === jobName ? `2px solid ${colors.primaryBlue}` : `2px solid ${colors.textDark}`,
+                                        border: job === jobName ? `2px solid ${colors.primaryBlue}` : `2px solid ${colors.textDark}`,
                                         borderRadius: '15px',
                                         padding: '20px',
                                         backgroundColor: 'white',
                                         cursor: 'pointer',
                                         transition: 'all 0.2s',
-                                        boxShadow: activeJobFilter === jobName ? `0 0 10px ${colors.lightBlue}` : 'none',
+                                        boxShadow: job === jobName ? `0 0 10px ${colors.lightBlue}` : 'none',
                                         display: 'flex',
                                         flexDirection: 'column',
                                         minHeight: '180px'
@@ -184,7 +187,7 @@ export default function DoPhaseContent() {
                             const workerNames = ['박기철', '최민수', '이영희'];
                             const workerName = workerNames[colIdx];
                             // Find TPO registered for this specific job filter
-                            const tpo = registeredTpos.find(t => t.job === activeJobFilter);
+                            const tpo = registeredTpos.find(t => t.job === job);
 
                             const handleAction = (status: 'O' | 'X', understanding: string) => {
                                 if (!tpo) return;
@@ -194,7 +197,7 @@ export default function DoPhaseContent() {
                                     area: `${Math.floor(Math.random() * 200 + 800)}호`,
                                     item: tpo.criteria.checklist,
                                     status: status,
-                                    role: activeJobFilter,
+                                    role: job,
                                     reason: status === 'X' ? understanding : '',
                                     tpoId: tpo.id
                                 });
@@ -207,7 +210,7 @@ export default function DoPhaseContent() {
                                         <div style={{ display: 'flex', gap: '10px' }}>
                                             <div style={{ flex: 1, border: `2px solid ${colors.textDark}`, borderRadius: '20px', padding: '20px', backgroundColor: 'white', position: 'relative', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
                                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-                                                    <div style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>{activeJobFilter} : {workerName}</div>
+                                                    <div style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>{job} : {workerName}</div>
                                                     <div style={{ color: colors.textGray }}>•••</div>
                                                 </div>
                                                 <div style={{ marginBottom: '10px', fontSize: '0.9rem', fontWeight: 'bold', lineHeight: '1.6' }}>
@@ -246,7 +249,7 @@ export default function DoPhaseContent() {
                                                 </div>
                                             </div>
                                             <div style={{ width: '80px', border: `2px solid ${colors.textDark}`, borderRadius: '15px', padding: '10px', backgroundColor: 'white', display: 'flex', flexDirection: 'column', gap: '10px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
-                                                <div style={{ fontWeight: 'bold', fontSize: '0.85rem', borderBottom: `2px solid ${colors.primaryBlue}`, paddingBottom: '4px' }}>{activeJobFilter}</div>
+                                                <div style={{ fontWeight: 'bold', fontSize: '0.85rem', borderBottom: `2px solid ${colors.primaryBlue}`, paddingBottom: '4px' }}>{job}</div>
                                                 <div style={{ fontSize: '0.8rem', fontWeight: 'bold', lineHeight: '1.3' }}>00월 미준수<br />누적 수 : {inspectionResults.filter((r: InspectionRecord) => r.name === workerName && r.status === 'X').length}회</div>
                                                 <div style={{ fontSize: '0.8rem', fontWeight: 'bold', lineHeight: '1.3' }}>수행 준수율<br />{
                                                     inspectionResults.filter((r: InspectionRecord) => r.name === workerName).length > 0
@@ -266,111 +269,183 @@ export default function DoPhaseContent() {
                     </div>
                 </>
             ) : activeDoSubPhase === 'checklist' ? (
-                <div>
-                    <header style={{ marginBottom: '25px' }}>
-                        <h2 style={{ fontSize: '1.2rem', color: colors.textDark, fontWeight: 'bold' }}>Do 1-2. 업무수행 점검 리스트</h2>
-                        <p style={{ color: colors.textGray, fontSize: '0.9rem', marginTop: '5px' }}>객실팀 업무수행 점검 결과를 확인하여 미준수 항목을 관리합니다.</p>
-                    </header>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                        <h2 style={{ fontSize: '1.4rem', fontWeight: 'bold', color: colors.textDark }}>객실팀 업무수행 점검리스트</h2>
+                        <div style={{ display: 'flex', gap: '12px' }}>
+                            <button style={{ padding: '8px 25px', backgroundColor: colors.primaryBlue, color: 'white', border: 'none', borderRadius: '25px', fontSize: '0.9rem', fontWeight: 'bold', cursor: 'pointer' }}>수정하기</button>
+                            <button style={{ padding: '8px 25px', backgroundColor: '#3F51B5', color: 'white', border: 'none', borderRadius: '25px', fontSize: '0.9rem', fontWeight: 'bold', cursor: 'pointer' }}>등록하기</button>
+                        </div>
+                    </div>
 
-                    {/* Summary Statistics Cards */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px', marginBottom: '30px' }}>
+                    {/* Search Bar Section */}
+                    <div style={{ position: 'relative', width: '100%' }}>
+                        <input
+                            type="text"
+                            placeholder="업무수행 점검 상황을 검색해 보세요"
+                            style={{
+                                width: '100%',
+                                padding: '15px 20px 15px 50px',
+                                border: `2px solid ${colors.textDark}`,
+                                borderRadius: '10px',
+                                fontSize: '1rem',
+                                color: colors.textDark
+                            }}
+                        />
+                        <div style={{ position: 'absolute', left: '18px', top: '50%', transform: 'translateY(-50%)', fontSize: '1.2rem', color: colors.textGray }}>🔍</div>
+                    </div>
+
+                    {/* Filter Tags */}
+                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                         {[
-                            { label: '총 점검 건수', value: `${inspectionResults.length}건`, color: colors.textDark },
-                            { label: '준수 건수', value: `${inspectionResults.filter((r: InspectionRecord) => r.status === 'O').length}건`, color: '#2E7D32' },
-                            { label: '미준수 건수', value: `${inspectionResults.filter((r: InspectionRecord) => r.status === 'X').length}건`, color: '#D32F2F', highlight: inspectionResults.filter((r: InspectionRecord) => r.status === 'X').length > 0 },
-                            { label: '평균 준수율', value: `${inspectionResults.length > 0 ? Math.round((inspectionResults.filter((r: InspectionRecord) => r.status === 'O').length / inspectionResults.length) * 100) : 100}%`, color: colors.primaryBlue, isRate: true }
-                        ].map((stat, idx) => (
-                            <div key={idx} style={{
+                            { label: '마감업무', id: 1 },
+                            { label: '인스펙션', id: 2 },
+                            { label: '린넨물 관리', id: 3 }
+                        ].map(tag => (
+                            <div key={tag.id} style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                padding: '6px 15px',
                                 backgroundColor: 'white',
-                                padding: '20px',
-                                borderRadius: '15px',
-                                border: stat.highlight ? `2px solid #D32F2F` : `1px solid ${colors.border}`,
-                                boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
-                                textAlign: 'center'
+                                border: `1px solid ${colors.textDark}`,
+                                borderRadius: '20px',
+                                fontSize: '0.85rem',
+                                fontWeight: 'bold'
                             }}>
-                                <div style={{ fontSize: '0.9rem', color: colors.textGray, marginBottom: '10px', fontWeight: 'bold' }}>{stat.label}</div>
-                                <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: stat.color }}>{stat.value}</div>
-                                {stat.isRate && <div style={{ fontSize: '0.8rem', color: '#2E7D32', marginTop: '5px' }}>▲ 2.3% vs 전주</div>}
+                                {tag.label} <span style={{ cursor: 'pointer', color: colors.textGray }}>✕</span>
                             </div>
                         ))}
                     </div>
 
-                    {/* Inspection Group Tabs (Slide 6 concepts) */}
-                    <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
-                        {['전체', '인스펙터', '룸메이드'].map(tab => (
-                            <button key={tab} style={{
-                                padding: '8px 20px',
-                                borderRadius: '20px',
-                                border: tab === '인스펙터' ? `none` : `1px solid ${colors.border}`,
-                                backgroundColor: tab === '인스펙터' ? colors.primaryBlue : 'white',
-                                color: tab === '인스펙터' ? 'white' : colors.textGray,
-                                fontWeight: 'bold',
-                                fontSize: '0.9rem',
-                                cursor: 'pointer'
-                            }}>
-                                {tab}
-                            </button>
-                        ))}
-                    </div>
+                    {/* Rest of the content will be updated in the next step (Table) */}
 
-                    {/* Detailed Inspection Table */}
-                    <div style={{ backgroundColor: 'white', borderRadius: '15px', border: `1px solid ${colors.border}`, overflow: 'hidden', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                    {/* SOP Management Table (Matching Slide 6) */}
+                    <div style={{
+                        backgroundColor: 'white',
+                        borderRadius: '0',
+                        border: `1px solid ${colors.textDark}`,
+                        overflow: 'hidden',
+                        marginTop: '10px'
+                    }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'center', fontSize: '0.85rem' }}>
                             <thead>
-                                <tr style={{ backgroundColor: '#F8F9FB', borderBottom: `2px solid ${colors.border}` }}>
-                                    <th style={{ padding: '15px 20px', fontWeight: 'bold', fontSize: '0.9rem', color: colors.textGray }}>순번</th>
-                                    <th style={{ padding: '15px 20px', fontWeight: 'bold', fontSize: '0.9rem', color: colors.textGray }}>점검 시간</th>
-                                    <th style={{ padding: '15px 20px', fontWeight: 'bold', fontSize: '0.9rem', color: colors.textGray }}>점검자</th>
-                                    <th style={{ padding: '15px 20px', fontWeight: 'bold', fontSize: '0.9rem', color: colors.textGray }}>점검 구역</th>
-                                    <th style={{ padding: '15px 20px', fontWeight: 'bold', fontSize: '0.9rem', color: colors.textGray }}>점검 항목 (Checklist)</th>
-                                    <th style={{ padding: '15px 20px', fontWeight: 'bold', fontSize: '0.9rem', color: colors.textGray, textAlign: 'center' }}>결과</th>
-                                    <th style={{ padding: '15px 20px', fontWeight: 'bold', fontSize: '0.9rem', color: colors.textGray }}>이행 근거 (AI)</th>
-                                    <th style={{ padding: '15px 20px', fontWeight: 'bold', fontSize: '0.9rem', color: colors.textGray }}>조치</th>
+                                <tr style={{ backgroundColor: '#E8EAF6', borderBottom: `1px solid ${colors.textDark}` }}>
+                                    <th rowSpan={2} style={{ padding: '12px', borderRight: `1px solid ${colors.textDark}`, width: '120px' }}>A 사업장</th>
+                                    <th rowSpan={2} style={{ padding: '12px', borderRight: `1px solid ${colors.textDark}`, width: '100px' }}>직무/팀</th>
+                                    <th rowSpan={2} style={{ padding: '12px', borderRight: `1px solid ${colors.textDark}`, width: '100px' }}>직무상세</th>
+                                    <th colSpan={3} style={{ padding: '8px', borderRight: `1px solid ${colors.textDark}`, borderBottom: `1px solid ${colors.textDark}` }}>점검 해야 할 상황</th>
+                                    <th rowSpan={2} style={{ padding: '12px', borderRight: `1px solid ${colors.textDark}` }}>점검 체크리스트</th>
+                                    <th rowSpan={2} style={{ padding: '12px', borderRight: `1px solid ${colors.textDark}`, width: '80px' }}>점검 항목</th>
+                                    <th rowSpan={2} style={{ padding: '12px', borderRight: `1px solid ${colors.textDark}`, width: '70px' }}>이행근거 요구</th>
+                                    <th rowSpan={2} style={{ padding: '12px', borderRight: `1px solid ${colors.textDark}`, width: '70px' }}>검증 방법</th>
+                                    <th rowSpan={2} style={{ padding: '12px', width: '70px' }}>업무 수행자</th>
+                                </tr>
+                                <tr style={{ backgroundColor: '#E8EAF6', borderBottom: `1px solid ${colors.textDark}` }}>
+                                    <th style={{ padding: '8px', borderRight: `1px solid ${colors.textDark}`, width: '80px' }}>Time</th>
+                                    <th style={{ padding: '8px', borderRight: `1px solid ${colors.textDark}`, width: '100px' }}>Place</th>
+                                    <th style={{ padding: '8px', borderRight: `1px solid ${colors.textDark}`, width: '120px' }}>Occasion</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {inspectionResults.map((row: InspectionRecord, idx: number) => (
-                                    <tr key={row.id} style={{ borderBottom: `1px solid ${colors.border}`, backgroundColor: row.status === 'X' ? '#FFF8F8' : 'white' }}>
-                                        <td style={{ padding: '15px 20px', fontSize: '0.9rem' }}>{inspectionResults.length - idx}</td>
-                                        <td style={{ padding: '15px 20px', fontSize: '0.9rem', color: colors.textGray }}>{row.time}</td>
-                                        <td style={{ padding: '15px 20px', fontSize: '0.9rem', fontWeight: 'bold' }}>{row.name} <span style={{ fontSize: '0.75rem', color: colors.textGray, fontWeight: 'normal' }}>({row.role})</span></td>
-                                        <td style={{ padding: '15px 20px', fontSize: '0.9rem' }}>{row.area}</td>
-                                        <td style={{ padding: '15px 20px', fontSize: '0.9rem', fontWeight: row.status === 'X' ? 'bold' : 'normal' }}>
-                                            {row.item}
-                                            {row.reason && <div style={{ fontSize: '0.8rem', color: '#D32F2F', marginTop: '4px' }}>└ {row.reason}</div>}
+                                {registeredTpos.filter(t => t.team === team).map((t, idx, arr) => (
+                                    <tr key={t.id} style={{ borderBottom: `1px solid ${colors.textDark}`, backgroundColor: selectedSopId === t.id ? '#F0F4F8' : 'transparent' }}>
+                                        {idx === 0 && <td rowSpan={arr.length} style={{ borderRight: `1px solid ${colors.textDark}`, fontWeight: 'bold' }}>{workplace}</td>}
+                                        <td style={{ padding: '12px', borderRight: `1px solid ${colors.textDark}`, backgroundColor: '#F8F9FB' }}>{t.job}</td>
+                                        <td style={{ padding: '12px', borderRight: `1px solid ${colors.textDark}` }}>{t.criteria.checklist.split(' ')[0]}</td>
+                                        <td style={{ padding: '12px', borderRight: `1px solid ${colors.textDark}` }}>{t.tpo.time}</td>
+                                        <td style={{ padding: '12px', borderRight: `1px solid ${colors.textDark}` }}>{t.tpo.place}</td>
+                                        <td style={{ padding: '12px', borderRight: `1px solid ${colors.textDark}` }}>{t.tpo.occasion}</td>
+                                        <td style={{ padding: '12px', borderRight: `1px solid ${colors.textDark}`, textAlign: 'left' }}>{t.criteria.checklist}</td>
+                                        <td style={{ padding: '12px', borderRight: `1px solid ${colors.textDark}` }}>
+                                            <button
+                                                onClick={() => setSelectedSopId(t.id)}
+                                                style={{
+                                                    backgroundColor: selectedSopId === t.id ? colors.textDark : colors.primaryBlue,
+                                                    color: 'white', border: 'none', borderRadius: '4px', padding: '4px 12px', fontSize: '0.75rem', cursor: 'pointer'
+                                                }}
+                                            >
+                                                {selectedSopId === t.id ? '선택됨' : '선택'}
+                                            </button>
                                         </td>
-                                        <td style={{ padding: '15px 20px', textAlign: 'center' }}>
-                                            <span style={{
-                                                display: 'inline-block',
-                                                width: '24px',
-                                                height: '24px',
-                                                lineHeight: '24px',
-                                                borderRadius: '50%',
-                                                backgroundColor: row.status === 'O' ? '#E8F5E9' : '#FFEBEE',
-                                                color: row.status === 'O' ? '#2E7D32' : '#D32F2F',
-                                                fontWeight: 'bold',
-                                                fontSize: '0.85rem'
-                                            }}>
-                                                {row.status}
-                                            </span>
-                                        </td>
-                                        <td style={{ padding: '15px 20px' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                <div style={{ width: '40px', height: '30px', backgroundColor: '#EEE', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', color: colors.textGray }}>IMG</div>
-                                                <span style={{ fontSize: '0.8rem', color: colors.primaryBlue, textDecoration: 'underline', cursor: 'pointer' }}>AI 판독</span>
-                                            </div>
-                                        </td>
-                                        <td style={{ padding: '15px 20px' }}>
-                                            {row.status === 'X' ? (
-                                                <button style={{ padding: '4px 12px', backgroundColor: '#D32F2F', color: 'white', border: 'none', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer' }}>조치하기</button>
-                                            ) : (
-                                                <span style={{ color: colors.textGray, fontSize: '0.75rem' }}>-</span>
-                                            )}
+                                        <td style={{ padding: '12px', borderRight: `1px solid ${colors.textDark}` }}>{t.matching.evidence}</td>
+                                        <td style={{ padding: '12px', borderRight: `1px solid ${colors.textDark}` }}>{t.matching.method}</td>
+                                        <td style={{ padding: '12px' }}>
+                                            <button style={{ backgroundColor: '#212121', color: 'white', border: 'none', borderRadius: '4px', padding: '4px 12px', fontSize: '0.75rem', cursor: 'pointer' }}>지정</button>
                                         </td>
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
+                    </div>
+
+                    {/* Bottom Inspection Item Box (Slide 6 Bottom Right) */}
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '20px' }}>
+                        <div style={{
+                            width: '350px',
+                            border: `2px solid ${colors.textDark}`,
+                            borderRadius: '15px',
+                            padding: '15px',
+                            backgroundColor: 'white',
+                            boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                        }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 'bold', color: colors.textDark }}>업무수행 점검 항목</h3>
+                                <button
+                                    onClick={() => {
+                                        if (!selectedSop) return;
+                                        const allChecked = selectedSop.criteria.items.every(item => checkedItems[item]);
+                                        addInspectionResult({
+                                            time: new Date().toLocaleTimeString(),
+                                            name: '최민수',
+                                            area: selectedSop.tpo.place,
+                                            item: selectedSop.criteria.checklist,
+                                            status: allChecked ? 'O' : 'X',
+                                            role: selectedSop.job,
+                                            reason: allChecked ? '' : '세부 항목 일부 미이행',
+                                            tpoId: selectedSop.id
+                                        });
+                                        alert(allChecked ? '점검 결과가 정상 등록되었습니다.' : '미준수 항목이 발생하여 조치계획 보드로 탐지되었습니다.');
+                                        setCheckedItems({});
+                                        setSelectedSopId(null);
+                                    }}
+                                    style={{ backgroundColor: colors.primaryBlue, color: 'white', border: 'none', borderRadius: '15px', padding: '4px 15px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer' }}
+                                >
+                                    저장
+                                </button>
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                {selectedSop ? (
+                                    selectedSop.criteria.items.map((item, i) => (
+                                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <span style={{ fontSize: '0.85rem', color: colors.textDark }}>{item}</span>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                <span style={{
+                                                    fontSize: '0.7rem',
+                                                    padding: '2px 8px',
+                                                    backgroundColor: i % 2 === 0 ? '#FF9800' : '#D32F2F',
+                                                    color: 'white',
+                                                    borderRadius: '15px',
+                                                    fontWeight: 'bold'
+                                                }}>
+                                                    {i % 2 === 0 ? '표준 이미지 존재' : '표준 이미지 미준수'}
+                                                </span>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={!!checkedItems[item]}
+                                                    onChange={(e) => setCheckedItems(prev => ({ ...prev, [item]: e.target.checked }))}
+                                                    style={{ cursor: 'pointer' }}
+                                                />
+                                            </div>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div style={{ textAlign: 'center', color: colors.textGray, fontSize: '0.85rem', padding: '20px' }}>
+                                        상단 테이블에서 점검할 상황을 선택하세요.
+                                    </div>
+                                )}
+                            </div>
+                        </div>
                     </div>
                 </div>
             ) : activeDoSubPhase === 'actionplan' ? (
@@ -384,29 +459,77 @@ export default function DoPhaseContent() {
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '20px' }}>
-                        {[1, 2].map(i => (
-                            <div key={i} style={{ border: `2px solid ${colors.textDark}`, borderRadius: '15px', padding: '20px', backgroundColor: 'white' }}>
+                        {actionPlanItems.map(item => (
+                            <div key={item.id} style={{ border: `2px solid ${colors.textDark}`, borderRadius: '15px', padding: '20px', backgroundColor: 'white' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
-                                    <div style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>{i === 1 ? '객실팀 / 객실안전성' : '로비 / 로비안전성'}</div>
-                                    <div style={{ color: '#D32F2F', fontWeight: 'bold', fontSize: '0.9rem' }}>{i === 1 ? '10일째 방치' : '즉시 조치 필요'}</div>
+                                    <div style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>{item.team} / {item.category}</div>
+                                    <div style={{
+                                        color: item.status === 'pending' ? '#D32F2F' : item.status === 'in_progress' ? '#1565C0' : '#2E7D32',
+                                        fontWeight: 'bold', fontSize: '0.9rem'
+                                    }}>
+                                        {item.status === 'pending' ? '즉시 조치 필요' : item.status === 'in_progress' ? '조치 중' : '조치 완료'}
+                                    </div>
                                 </div>
                                 <div style={{ backgroundColor: '#F5F5F5', padding: '15px', borderRadius: '8px', marginBottom: '15px' }}>
-                                    <div style={{ fontWeight: 'bold', fontSize: '0.95rem', marginBottom: '5px' }}>{i === 1 ? '노블리안 923호 방충망 탈락 방지' : '로비 회전문 파손 상태를 조치해주세요!'}</div>
-                                    <p style={{ fontSize: '0.85rem', color: colors.textGray, margin: 0 }}>발생일시: 2025.12.01 14:00</p>
+                                    <div style={{ fontWeight: 'bold', fontSize: '0.95rem', marginBottom: '5px' }}>{item.issue}</div>
+                                    <p style={{ fontSize: '0.85rem', color: colors.textGray, margin: 0 }}>발생일시: {item.timestamp}</p>
+                                    <p style={{ fontSize: '0.85rem', color: '#D32F2F', margin: '4px 0 0 0' }}>원인: {item.reason}</p>
                                 </div>
                                 <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: '10px', marginBottom: '15px' }}>
                                     <div style={{ fontWeight: 'bold', fontSize: '0.85rem', alignSelf: 'center' }}>문제 원인</div>
-                                    <input type="text" placeholder="문제 발생 원인을 입력하세요" style={{ ...selectStyle, width: '100%' }} />
+                                    <input
+                                        type="text"
+                                        placeholder="문제 발생 원인을 입력하세요"
+                                        value={item.cause || ''}
+                                        onChange={(e) => updateActionPlanItem(item.id, { cause: e.target.value })}
+                                        style={{ ...selectStyle, width: '100%' }}
+                                    />
                                     <div style={{ fontWeight: 'bold', fontSize: '0.85rem', alignSelf: 'center' }}>조치 방법</div>
-                                    <input type="text" placeholder="조치 방법을 입력하세요" style={{ ...selectStyle, width: '100%' }} />
+                                    <input
+                                        type="text"
+                                        placeholder="조치 방법을 입력하세요"
+                                        value={item.solution || ''}
+                                        onChange={(e) => updateActionPlanItem(item.id, { solution: e.target.value })}
+                                        style={{ ...selectStyle, width: '100%' }}
+                                    />
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <div style={{ display: 'flex', gap: '5px' }}>
-                                        <button style={{ padding: '4px 12px', borderRadius: '4px', border: `1px solid ${colors.border}`, backgroundColor: '#E8F5E9', color: '#2E7D32', fontSize: '0.8rem', fontWeight: 'bold' }}>조치완료</button>
-                                        <button style={{ padding: '4px 12px', borderRadius: '4px', border: `1px solid ${colors.border}`, backgroundColor: '#E3F2FD', color: '#1565C0', fontSize: '0.8rem', fontWeight: 'bold' }}>조치중</button>
-                                        <button style={{ padding: '4px 12px', borderRadius: '4px', border: `1px solid ${colors.border}`, backgroundColor: '#FFEBEE', color: '#C62828', fontSize: '0.8rem', fontWeight: 'bold' }}>조치불가</button>
+                                        <button
+                                            onClick={() => updateActionPlanItem(item.id, { status: 'completed' })}
+                                            style={{
+                                                padding: '4px 12px', borderRadius: '4px', border: `1px solid ${colors.border}`,
+                                                backgroundColor: item.status === 'completed' ? '#2E7D32' : '#E8F5E9',
+                                                color: item.status === 'completed' ? 'white' : '#2E7D32',
+                                                fontSize: '0.8rem', fontWeight: 'bold', cursor: 'pointer'
+                                            }}
+                                        >
+                                            조치완료
+                                        </button>
+                                        <button
+                                            onClick={() => updateActionPlanItem(item.id, { status: 'in_progress' })}
+                                            style={{
+                                                padding: '4px 12px', borderRadius: '4px', border: `1px solid ${colors.border}`,
+                                                backgroundColor: item.status === 'in_progress' ? '#1565C0' : '#E3F2FD',
+                                                color: item.status === 'in_progress' ? 'white' : '#1565C0',
+                                                fontSize: '0.8rem', fontWeight: 'bold', cursor: 'pointer'
+                                            }}
+                                        >
+                                            조치중
+                                        </button>
+                                        <button
+                                            onClick={() => updateActionPlanItem(item.id, { status: 'impossible' })}
+                                            style={{
+                                                padding: '4px 12px', borderRadius: '4px', border: `1px solid ${colors.border}`,
+                                                backgroundColor: item.status === 'impossible' ? '#C62828' : '#FFEBEE',
+                                                color: item.status === 'impossible' ? 'white' : '#C62828',
+                                                fontSize: '0.8rem', fontWeight: 'bold', cursor: 'pointer'
+                                            }}
+                                        >
+                                            조치불가
+                                        </button>
                                     </div>
-                                    <button style={{ padding: '6px 15px', backgroundColor: colors.primaryBlue, color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold', fontSize: '0.85rem' }}>등록하기</button>
+                                    <button style={{ padding: '6px 15px', backgroundColor: colors.primaryBlue, color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold', fontSize: '0.85rem', cursor: 'pointer' }}>저장</button>
                                 </div>
                             </div>
                         ))}
