@@ -79,6 +79,7 @@ export interface CriteriaData {
 export interface MatchingData {
     evidence: string;
     method: string;
+    elements?: string[];
 }
 
 export interface RegisteredTpo {

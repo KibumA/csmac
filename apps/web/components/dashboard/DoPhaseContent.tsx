@@ -12,16 +12,20 @@ export default function DoPhaseContent() {
         inspectionResults, addInspectionResult,
         registeredTpos,
         actionPlanItems, updateActionPlanItem,
+        isInspectionModalOpen, setInspectionModalOpen,
+        selectedInspectionSopId, setSelectedInspectionSopId,
         workplace, setWorkplace,
         team, setTeam,
         job, setJob,
-        teams
+        teams,
+        addJobInstruction,
+        jobInstructions
     } = usePDCA();
 
-    const [selectedSopId, setSelectedSopId] = useState<number | null>(null);
     const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>({});
+    const [isInstructionModalOpen, setInstructionModalOpen] = useState(false);
 
-    const selectedSop = registeredTpos.find(t => t.id === selectedSopId);
+    const selectedSop = registeredTpos.find(t => t.id === selectedInspectionSopId);
 
     // Use jobs from the global teams mapping
     const currentJobs = teams[team]?.jobs || [];
@@ -33,10 +37,10 @@ export default function DoPhaseContent() {
     }, [team, currentJobs]);
 
     const subPhases = [
+        { id: 'checklist', label: '업무수행 점검 리스트' },
         { id: 'instruction', label: '업무지시 보드' },
         { id: 'jobcard', label: '직무카드' },
         { id: 'actionplan', label: '조치계획 보드' },
-        { id: 'checklist', label: '업무수행 점검 리스트' },
         { id: 'plan', label: '점검계획서' },
         { id: 'archive', label: '보관함' },
     ];
@@ -176,97 +180,153 @@ export default function DoPhaseContent() {
                         })}
                     </div>
 
-                    {/* Row 2: Detailed Worker Task Cards Container */}
+                    {/* Row 2: Selected Job Detail & Instruction Input */}
                     <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(3, 1fr)',
+                        display: 'flex',
                         gap: '20px',
-                        alignItems: 'start'
+                        marginBottom: '30px'
                     }}>
-                        {[0, 1, 2].map((colIdx) => {
-                            const workerNames = ['박기철', '최민수', '이영희'];
-                            const workerName = workerNames[colIdx];
-                            // Find TPO registered for this specific job filter
-                            const tpo = registeredTpos.find(t => t.job === job);
-
-                            const handleAction = (status: 'O' | 'X', understanding: string) => {
-                                if (!tpo) return;
-                                addInspectionResult({
-                                    time: new Date().toLocaleString(),
-                                    name: workerName,
-                                    area: `${Math.floor(Math.random() * 200 + 800)}호`,
-                                    item: tpo.criteria.checklist,
-                                    status: status,
-                                    role: job,
-                                    reason: status === 'X' ? understanding : '',
-                                    tpoId: tpo.id
-                                });
-                                alert(`${workerName}의 '${understanding}' 참여 기록이 전송되었습니다.`);
-                            };
-
-                            return (
-                                <div key={`worker-${colIdx}`}>
-                                    {tpo ? (
-                                        <div style={{ display: 'flex', gap: '10px' }}>
-                                            <div style={{ flex: 1, border: `2px solid ${colors.textDark}`, borderRadius: '20px', padding: '20px', backgroundColor: 'white', position: 'relative', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-                                                    <div style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>{job} : {workerName}</div>
-                                                    <div style={{ color: colors.textGray }}>•••</div>
-                                                </div>
-                                                <div style={{ marginBottom: '10px', fontSize: '0.9rem', fontWeight: 'bold', lineHeight: '1.6' }}>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                        <span style={{ color: colors.textGray, fontSize: '0.8rem' }}>근속기간 : 5개월</span>
-                                                        <button
-                                                            onClick={() => handleAction('O', '수행 완료')}
-                                                            style={{ backgroundColor: colors.primaryBlue, color: 'white', border: 'none', borderRadius: '4px', padding: '4px 12px', fontSize: '0.75rem', cursor: 'pointer', fontWeight: 'bold' }}
-                                                        >
-                                                            보내기
-                                                        </button>
-                                                    </div>
-                                                    <div style={{ display: 'grid', gridTemplateColumns: '70px 1fr', gap: '5px', marginTop: '5px' }}>
-                                                        <span style={{ color: colors.textGray }}>Time :</span> <span>{tpo.tpo.time}</span>
-                                                        <span style={{ color: colors.textGray }}>Place :</span> <span>{tpo.tpo.place}</span>
-                                                        <span style={{ color: colors.textGray }}>Occasion :</span> <span>{tpo.tpo.occasion}</span>
-                                                    </div>
-                                                </div>
-                                                <div style={{ backgroundColor: '#E3F2FD', borderRadius: '8px', padding: '12px', marginBottom: '15px', fontSize: '0.9rem', fontWeight: 'bold', borderLeft: `4px solid ${colors.primaryBlue}` }}>
-                                                    {tpo.criteria.checklist}
-                                                </div>
-                                                <div style={{ marginBottom: '15px' }}>
-                                                    <div style={{ fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '8px', display: 'flex', justifyContent: 'space-between' }}>
-                                                        <span>업무지시 이해도 체크</span>
-                                                        <span style={{ color: colors.primaryBlue }}>확인 대기 중</span>
-                                                    </div>
-                                                    <div style={{ display: 'flex', gap: '3px' }}>
-                                                        <button onClick={() => handleAction('O', '이해완료')} style={{ flex: 1, padding: '6px 0', borderRadius: '6px', border: `1px solid ${colors.border}`, backgroundColor: 'white', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer' }}>이해완료</button>
-                                                        <button onClick={() => handleAction('X', '모호')} style={{ flex: 1, padding: '6px 0', borderRadius: '6px', border: `1px solid ${colors.border}`, backgroundColor: 'white', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer' }}>모호</button>
-                                                        <button onClick={() => handleAction('X', '이해불가')} style={{ flex: 1, padding: '6px 0', borderRadius: '6px', border: `1px solid ${colors.border}`, backgroundColor: 'white', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer' }}>이해불가</button>
-                                                    </div>
-                                                </div>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                    <div style={{ fontWeight: 'bold', fontSize: '0.85rem' }}>이행 근거</div>
-                                                    <div style={{ fontSize: '1.2rem', color: colors.textGray, cursor: 'pointer' }} onClick={() => handleAction('O', '사진 업로드')}>📷</div>
-                                                </div>
-                                            </div>
-                                            <div style={{ width: '80px', border: `2px solid ${colors.textDark}`, borderRadius: '15px', padding: '10px', backgroundColor: 'white', display: 'flex', flexDirection: 'column', gap: '10px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
-                                                <div style={{ fontWeight: 'bold', fontSize: '0.85rem', borderBottom: `2px solid ${colors.primaryBlue}`, paddingBottom: '4px' }}>{job}</div>
-                                                <div style={{ fontSize: '0.8rem', fontWeight: 'bold', lineHeight: '1.3' }}>00월 미준수<br />누적 수 : {inspectionResults.filter((r: InspectionRecord) => r.name === workerName && r.status === 'X').length}회</div>
-                                                <div style={{ fontSize: '0.8rem', fontWeight: 'bold', lineHeight: '1.3' }}>수행 준수율<br />{
-                                                    inspectionResults.filter((r: InspectionRecord) => r.name === workerName).length > 0
-                                                        ? Math.round((inspectionResults.filter((r: InspectionRecord) => r.name === workerName && r.status === 'O').length / inspectionResults.filter((r: InspectionRecord) => r.name === workerName).length) * 100)
-                                                        : 100
-                                                }%</div>
-                                            </div>
+                        {/* Left: Job Detail/SOP List */}
+                        <div style={{ flex: 1, backgroundColor: 'white', borderRadius: '15px', padding: '25px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', border: `1px solid ${colors.border}` }}>
+                            <div style={{ fontWeight: 'bold', fontSize: '1.2rem', marginBottom: '15px', borderBottom: `2px solid ${colors.border}`, paddingBottom: '10px' }}>{job} 업무 리스트</div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                {registeredTpos
+                                    .filter(t => t.job === job)
+                                    .slice(0, 5) // Show top 5
+                                    .map(t => (
+                                        <div key={t.id} style={{ padding: '10px', backgroundColor: '#F8F9FA', borderRadius: '8px', fontSize: '0.9rem' }}>
+                                            [{t.tpo.time}] {t.criteria.checklist}
                                         </div>
-                                    ) : (
-                                        <div style={{ border: `1px dashed ${colors.border}`, borderRadius: '20px', padding: '40px', textAlign: 'center', color: colors.textGray, fontSize: '0.9rem' }}>
-                                            등록된 TPO 업무가 없습니다.<br />'Plan' 단계에서 등록해주세요.
-                                        </div>
-                                    )}
+                                    ))}
+                                {registeredTpos.filter(t => t.job === job).length === 0 && (
+                                    <div style={{ color: colors.textGray, padding: '20px', textAlign: 'center' }}>등록된 업무가 없습니다.</div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Right: Job Instruction Form */}
+                        <div style={{ flex: 1, backgroundColor: 'white', borderRadius: '15px', padding: '25px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', border: `1px solid ${colors.border}` }}>
+                            <div style={{ fontWeight: 'bold', fontSize: '1.2rem', marginBottom: '20px', borderBottom: `2px solid ${colors.border}`, paddingBottom: '10px' }}>업무지시 (Job Order)</div>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 'bold', marginBottom: '5px', color: colors.textDark }}>담당자 (Assignee)</label>
+                                    <select style={{ width: '100%', padding: '10px', borderRadius: '8px', border: `1px solid ${colors.textDark}`, fontSize: '0.95rem' }}>
+                                        <option>김철수 ({job})</option>
+                                        <option>이영희 ({job})</option>
+                                        <option>박지성 ({job})</option>
+                                    </select>
                                 </div>
-                            );
-                        })}
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 'bold', marginBottom: '5px', color: colors.textDark }}>제목 (Subject)</label>
+                                    <input type="text" placeholder="업무 지시 제목을 입력하세요" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: `1px solid ${colors.textDark}`, fontSize: '0.95rem' }} id="instruction-subject" />
+                                </div>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 'bold', marginBottom: '5px', color: colors.textDark }}>지시 상세 (Description)</label>
+                                    <textarea placeholder="구체적인 업무 지시 내용을 입력하세요..." style={{ width: '100%', padding: '10px', borderRadius: '8px', border: `1px solid ${colors.textDark}`, fontSize: '0.95rem', minHeight: '100px' }} id="instruction-desc" />
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '10px' }}>
+                                    <button
+                                        onClick={() => {
+                                            const subject = (document.getElementById('instruction-subject') as HTMLInputElement).value;
+                                            const desc = (document.getElementById('instruction-desc') as HTMLTextAreaElement).value;
+                                            if (!subject || !desc) {
+                                                alert('제목과 상세 내용을 모두 입력해주세요.');
+                                                return;
+                                            }
+                                            setInstructionModalOpen(true);
+                                        }}
+                                        style={{
+                                            padding: '12px 30px',
+                                            backgroundColor: colors.primaryBlue,
+                                            color: 'white',
+                                            border: 'none',
+                                            borderRadius: '8px',
+                                            fontWeight: 'bold',
+                                            cursor: 'pointer',
+                                            fontSize: '1rem',
+                                            boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                                        }}
+                                    >
+                                        직무카드 생성 (Create Job Card)
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
+
+                    {/* Job Card Preview Modal (Slide 8 Logic) */}
+                    {isInstructionModalOpen && (
+                        <div style={{
+                            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                            backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000,
+                            display: 'flex', justifyContent: 'center', alignItems: 'center'
+                        }}>
+                            <div style={{
+                                width: '400px', backgroundColor: 'white', borderRadius: '15px',
+                                padding: '30px', boxShadow: '0 20px 50px rgba(0,0,0,0.2)',
+                                display: 'flex', flexDirection: 'column', gap: '20px'
+                            }}>
+                                <div style={{ textAlign: 'center', borderBottom: `2px solid ${colors.primaryBlue}`, paddingBottom: '15px' }}>
+                                    <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: colors.primaryBlue }}>JOB CARD</div>
+                                    <div style={{ fontSize: '0.9rem', color: colors.textGray }}>업무 지시 확인</div>
+                                </div>
+
+                                <div style={{ backgroundColor: '#F8F9FA', padding: '20px', borderRadius: '10px' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+                                        <span style={{ color: colors.textGray, fontSize: '0.9rem' }}>To:</span>
+                                        <span style={{ fontWeight: 'bold' }}>박지성 ({job})</span>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+                                        <span style={{ color: colors.textGray, fontSize: '0.9rem' }}>From:</span>
+                                        <span style={{ fontWeight: 'bold' }}>관리자</span>
+                                    </div>
+                                    <div style={{ borderTop: `1px solid ${colors.border}`, margin: '10px 0' }} />
+                                    <div style={{ fontWeight: 'bold', fontSize: '1.1rem', marginBottom: '5px' }}>
+                                        {(document.getElementById('instruction-subject') as HTMLInputElement)?.value}
+                                    </div>
+                                    <div style={{ fontSize: '0.95rem', color: colors.textDark, lineHeight: '1.5' }}>
+                                        {(document.getElementById('instruction-desc') as HTMLTextAreaElement)?.value}
+                                    </div>
+                                </div>
+
+                                <button
+                                    onClick={() => {
+                                        addJobInstruction({
+                                            targetTeam: team,
+                                            assignee: `박지성 (${job})`,
+                                            subject: (document.getElementById('instruction-subject') as HTMLInputElement).value,
+                                            description: (document.getElementById('instruction-desc') as HTMLTextAreaElement).value,
+                                            deadline: new Date().toLocaleDateString(),
+                                            status: 'sent',
+                                            timestamp: new Date().toISOString()
+                                        });
+                                        alert('직무카드가 실무자에게 전송되었습니다.');
+                                        setInstructionModalOpen(false);
+                                        // Optional: Clear inputs
+                                    }}
+                                    style={{
+                                        width: '100%', padding: '15px',
+                                        backgroundColor: colors.primaryBlue, color: 'white',
+                                        border: 'none', borderRadius: '10px',
+                                        fontSize: '1rem', fontWeight: 'bold', cursor: 'pointer'
+                                    }}
+                                >
+                                    실무자에게 전송 (Send)
+                                </button>
+                                <button
+                                    onClick={() => setInstructionModalOpen(false)}
+                                    style={{
+                                        width: '100%', padding: '10px',
+                                        backgroundColor: 'white', color: colors.textGray,
+                                        border: 'none', cursor: 'pointer', fontSize: '0.9rem'
+                                    }}
+                                >
+                                    취소
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </>
             ) : activeDoSubPhase === 'checklist' ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -278,175 +338,275 @@ export default function DoPhaseContent() {
                         </div>
                     </div>
 
-                    {/* Search Bar Section */}
-                    <div style={{ position: 'relative', width: '100%' }}>
-                        <input
-                            type="text"
-                            placeholder="업무수행 점검 상황을 검색해 보세요"
-                            style={{
-                                width: '100%',
-                                padding: '15px 20px 15px 50px',
-                                border: `2px solid ${colors.textDark}`,
-                                borderRadius: '10px',
-                                fontSize: '1rem',
-                                color: colors.textDark
-                            }}
-                        />
-                        <div style={{ position: 'absolute', left: '18px', top: '50%', transform: 'translateY(-50%)', fontSize: '1.2rem', color: colors.textGray }}>🔍</div>
-                    </div>
+                    {/* Search Bar & Filter Tags Section */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                        <div style={{ position: 'relative', width: '380px' }}>
+                            <input
+                                type="text"
+                                placeholder="업무수행 점검 상황을 검색해 보세요"
+                                style={{
+                                    width: '100%',
+                                    padding: '12px 20px 12px 45px',
+                                    border: `1px solid ${colors.textDark}`,
+                                    borderRadius: '25px',
+                                    fontSize: '0.95rem',
+                                    color: colors.textDark,
+                                    backgroundColor: 'white'
+                                }}
+                            />
+                            <div style={{ position: 'absolute', left: '18px', top: '50%', transform: 'translateY(-50%)', fontSize: '1.1rem', color: colors.textGray }}>🔍</div>
+                        </div>
 
-                    {/* Filter Tags */}
-                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                        {[
-                            { label: '마감업무', id: 1 },
-                            { label: '인스펙션', id: 2 },
-                            { label: '린넨물 관리', id: 3 }
-                        ].map(tag => (
-                            <div key={tag.id} style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                                padding: '6px 15px',
-                                backgroundColor: 'white',
-                                border: `1px solid ${colors.textDark}`,
-                                borderRadius: '20px',
-                                fontSize: '0.85rem',
-                                fontWeight: 'bold'
-                            }}>
-                                {tag.label} <span style={{ cursor: 'pointer', color: colors.textGray }}>✕</span>
-                            </div>
-                        ))}
+                        {/* Filter Tags (Right Aligned) */}
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                            {[
+                                { label: '마감업무', id: 1 },
+                                { label: '인스펙션', id: 2 },
+                                { label: '린넨물 관리', id: 3 }
+                            ].map(tag => (
+                                <div key={tag.id} style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    padding: '8px 16px',
+                                    backgroundColor: '#F3F4F6',
+                                    border: 'none',
+                                    borderRadius: '20px',
+                                    fontSize: '0.85rem',
+                                    fontWeight: 'bold',
+                                    color: colors.textDark,
+                                    cursor: 'pointer',
+                                    transition: 'background-color 0.2s'
+                                }}>
+                                    {tag.label} <span style={{ fontSize: '0.8rem', color: colors.textGray }}>✕</span>
+                                </div>
+                            ))}
+                        </div>
                     </div>
 
                     {/* Rest of the content will be updated in the next step (Table) */}
 
-                    {/* SOP Management Table (Matching Slide 6) */}
+                    {/* SOP Management Table (Slide 7) */}
                     <div style={{
                         backgroundColor: 'white',
-                        borderRadius: '0',
-                        border: `1px solid ${colors.textDark}`,
+                        borderRadius: '12px',
+                        border: `1px solid ${colors.border}`,
                         overflow: 'hidden',
-                        marginTop: '10px'
+                        marginTop: '10px',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
                     }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'center', fontSize: '0.85rem' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'center', fontSize: '0.9rem' }}>
                             <thead>
-                                <tr style={{ backgroundColor: '#E8EAF6', borderBottom: `1px solid ${colors.textDark}` }}>
-                                    <th rowSpan={2} style={{ padding: '12px', borderRight: `1px solid ${colors.textDark}`, width: '120px' }}>A 사업장</th>
-                                    <th rowSpan={2} style={{ padding: '12px', borderRight: `1px solid ${colors.textDark}`, width: '100px' }}>직무/팀</th>
-                                    <th rowSpan={2} style={{ padding: '12px', borderRight: `1px solid ${colors.textDark}`, width: '100px' }}>직무상세</th>
-                                    <th colSpan={3} style={{ padding: '8px', borderRight: `1px solid ${colors.textDark}`, borderBottom: `1px solid ${colors.textDark}` }}>점검 해야 할 상황</th>
-                                    <th rowSpan={2} style={{ padding: '12px', borderRight: `1px solid ${colors.textDark}` }}>점검 체크리스트</th>
-                                    <th rowSpan={2} style={{ padding: '12px', borderRight: `1px solid ${colors.textDark}`, width: '80px' }}>점검 항목</th>
-                                    <th rowSpan={2} style={{ padding: '12px', borderRight: `1px solid ${colors.textDark}`, width: '70px' }}>이행근거 요구</th>
-                                    <th rowSpan={2} style={{ padding: '12px', borderRight: `1px solid ${colors.textDark}`, width: '70px' }}>검증 방법</th>
-                                    <th rowSpan={2} style={{ padding: '12px', width: '70px' }}>업무 수행자</th>
-                                </tr>
-                                <tr style={{ backgroundColor: '#E8EAF6', borderBottom: `1px solid ${colors.textDark}` }}>
-                                    <th style={{ padding: '8px', borderRight: `1px solid ${colors.textDark}`, width: '80px' }}>Time</th>
-                                    <th style={{ padding: '8px', borderRight: `1px solid ${colors.textDark}`, width: '100px' }}>Place</th>
-                                    <th style={{ padding: '8px', borderRight: `1px solid ${colors.textDark}`, width: '120px' }}>Occasion</th>
+                                <tr style={{ backgroundColor: '#F8F9FA', borderBottom: `2px solid ${colors.border}`, color: colors.textDark }}>
+                                    <th style={{ padding: '15px 10px', fontWeight: 'bold', width: '100px' }}>사업장</th>
+                                    <th style={{ padding: '15px 10px', fontWeight: 'bold', width: '120px' }}>직무/팀</th>
+                                    <th style={{ padding: '15px 10px', fontWeight: 'bold', width: '80px' }}>Time</th>
+                                    <th style={{ padding: '15px 10px', fontWeight: 'bold', width: '100px' }}>Place</th>
+                                    <th style={{ padding: '15px 10px', fontWeight: 'bold', width: '150px' }}>Occasion</th>
+                                    <th style={{ padding: '15px 10px', fontWeight: 'bold', textAlign: 'left' }}>체크리스트 (점검 항목)</th>
+                                    <th style={{ padding: '15px 10px', fontWeight: 'bold', width: '100px' }}>평가</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {registeredTpos.filter(t => t.team === team).map((t, idx, arr) => (
-                                    <tr key={t.id} style={{ borderBottom: `1px solid ${colors.textDark}`, backgroundColor: selectedSopId === t.id ? '#F0F4F8' : 'transparent' }}>
-                                        {idx === 0 && <td rowSpan={arr.length} style={{ borderRight: `1px solid ${colors.textDark}`, fontWeight: 'bold' }}>{workplace}</td>}
-                                        <td style={{ padding: '12px', borderRight: `1px solid ${colors.textDark}`, backgroundColor: '#F8F9FB' }}>{t.job}</td>
-                                        <td style={{ padding: '12px', borderRight: `1px solid ${colors.textDark}` }}>{t.criteria.checklist.split(' ')[0]}</td>
-                                        <td style={{ padding: '12px', borderRight: `1px solid ${colors.textDark}` }}>{t.tpo.time}</td>
-                                        <td style={{ padding: '12px', borderRight: `1px solid ${colors.textDark}` }}>{t.tpo.place}</td>
-                                        <td style={{ padding: '12px', borderRight: `1px solid ${colors.textDark}` }}>{t.tpo.occasion}</td>
-                                        <td style={{ padding: '12px', borderRight: `1px solid ${colors.textDark}`, textAlign: 'left' }}>{t.criteria.checklist}</td>
-                                        <td style={{ padding: '12px', borderRight: `1px solid ${colors.textDark}` }}>
-                                            <button
-                                                onClick={() => setSelectedSopId(t.id)}
-                                                style={{
-                                                    backgroundColor: selectedSopId === t.id ? colors.textDark : colors.primaryBlue,
-                                                    color: 'white', border: 'none', borderRadius: '4px', padding: '4px 12px', fontSize: '0.75rem', cursor: 'pointer'
-                                                }}
-                                            >
-                                                {selectedSopId === t.id ? '선택됨' : '선택'}
-                                            </button>
-                                        </td>
-                                        <td style={{ padding: '12px', borderRight: `1px solid ${colors.textDark}` }}>{t.matching.evidence}</td>
-                                        <td style={{ padding: '12px', borderRight: `1px solid ${colors.textDark}` }}>{t.matching.method}</td>
-                                        <td style={{ padding: '12px' }}>
-                                            <button style={{ backgroundColor: '#212121', color: 'white', border: 'none', borderRadius: '4px', padding: '4px 12px', fontSize: '0.75rem', cursor: 'pointer' }}>지정</button>
+                                {registeredTpos
+                                    .filter(t => t.team === team)
+                                    .map((t, index) => (
+                                        <tr key={t.id} style={{
+                                            borderBottom: `1px solid ${colors.border}`,
+                                            backgroundColor: selectedInspectionSopId === t.id ? '#E3F2FD' : 'white',
+                                            transition: 'background-color 0.2s'
+                                        }}>
+                                            <td style={{ padding: '15px 10px', fontWeight: 'bold' }}>{t.workplace}</td>
+                                            <td style={{ padding: '15px 10px' }}>
+                                                <div style={{ fontWeight: 'bold', color: colors.textDark }}>{t.job}</div>
+                                                <div style={{ fontSize: '0.8rem', color: colors.textGray }}>{teams[t.team]?.label}</div>
+                                            </td>
+                                            <td style={{ padding: '15px 10px' }}>
+                                                <span style={{ padding: '4px 10px', borderRadius: '4px', backgroundColor: '#E3F2FD', color: colors.primaryBlue, fontSize: '0.8rem', fontWeight: 'bold' }}>{t.tpo.time}</span>
+                                            </td>
+                                            <td style={{ padding: '15px 10px', fontWeight: 'bold', color: colors.textDark }}>{t.tpo.place}</td>
+                                            <td style={{ padding: '15px 10px', fontWeight: 'bold', color: colors.primaryBlue }}>{t.tpo.occasion}</td>
+                                            <td style={{ padding: '15px 10px', textAlign: 'left' }}>
+                                                <div style={{ fontWeight: 'bold', color: colors.textDark, marginBottom: '4px' }}>{t.criteria.checklist}</div>
+                                                <div style={{ fontSize: '0.8rem', color: colors.textGray }}>
+                                                    {t.criteria.items.slice(0, 2).map(i => i).join(', ')}
+                                                    {t.criteria.items.length > 2 && ` 외 ${t.criteria.items.length - 2}건`}
+                                                </div>
+                                            </td>
+                                            <td style={{ padding: '15px 10px' }}>
+                                                <button
+                                                    onClick={() => {
+                                                        setSelectedInspectionSopId(t.id);
+                                                        setInspectionModalOpen(true);
+                                                    }}
+                                                    style={{
+                                                        backgroundColor: 'white',
+                                                        color: colors.primaryBlue,
+                                                        border: `1px solid ${colors.primaryBlue}`,
+                                                        borderRadius: '6px',
+                                                        padding: '6px 16px',
+                                                        fontSize: '0.85rem',
+                                                        cursor: 'pointer',
+                                                        fontWeight: 'bold',
+                                                        transition: 'all 0.2s'
+                                                    }}
+                                                    onMouseOver={(e) => {
+                                                        e.currentTarget.style.backgroundColor = colors.primaryBlue;
+                                                        e.currentTarget.style.color = 'white';
+                                                    }}
+                                                    onMouseOut={(e) => {
+                                                        e.currentTarget.style.backgroundColor = 'white';
+                                                        e.currentTarget.style.color = colors.primaryBlue;
+                                                    }}
+                                                >
+                                                    점검하기
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                {registeredTpos.filter(t => t.team === team).length === 0 && (
+                                    <tr>
+                                        <td colSpan={5} style={{ padding: '50px', textAlign: 'center', color: colors.textGray }}>
+                                            <div style={{ fontSize: '2rem', marginBottom: '10px' }}>📋</div>
+                                            <div>등록된 점검 리스트가 없습니다.</div>
+                                            <div style={{ fontSize: '0.85rem', marginTop: '5px' }}>Plan 단계에서 새로운 TPO를 등록해주세요.</div>
                                         </td>
                                     </tr>
-                                ))}
+                                )}
                             </tbody>
                         </table>
                     </div>
 
-                    {/* Bottom Inspection Item Box (Slide 6 Bottom Right) */}
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '20px' }}>
+                    {/* Inspection Modal (Slide 7 Overlay) */}
+                    {isInspectionModalOpen && selectedSop && (
                         <div style={{
-                            width: '350px',
-                            border: `2px solid ${colors.textDark}`,
-                            borderRadius: '15px',
-                            padding: '15px',
-                            backgroundColor: 'white',
-                            boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                            position: 'fixed',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            backgroundColor: 'rgba(0,0,0,0.6)',
+                            backdropFilter: 'blur(4px)',
+                            display: 'flex',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            zIndex: 1000
                         }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 'bold', color: colors.textDark }}>업무수행 점검 항목</h3>
-                                <button
-                                    onClick={() => {
-                                        if (!selectedSop) return;
-                                        const allChecked = selectedSop.criteria.items.every(item => checkedItems[item]);
-                                        addInspectionResult({
-                                            time: new Date().toLocaleTimeString(),
-                                            name: '최민수',
-                                            area: selectedSop.tpo.place,
-                                            item: selectedSop.criteria.checklist,
-                                            status: allChecked ? 'O' : 'X',
-                                            role: selectedSop.job,
-                                            reason: allChecked ? '' : '세부 항목 일부 미이행',
-                                            tpoId: selectedSop.id
-                                        });
-                                        alert(allChecked ? '점검 결과가 정상 등록되었습니다.' : '미준수 항목이 발생하여 조치계획 보드로 탐지되었습니다.');
-                                        setCheckedItems({});
-                                        setSelectedSopId(null);
-                                    }}
-                                    style={{ backgroundColor: colors.primaryBlue, color: 'white', border: 'none', borderRadius: '15px', padding: '4px 15px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer' }}
-                                >
-                                    저장
-                                </button>
-                            </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                                {selectedSop ? (
-                                    selectedSop.criteria.items.map((item, i) => (
-                                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                            <span style={{ fontSize: '0.85rem', color: colors.textDark }}>{item}</span>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                <span style={{
-                                                    fontSize: '0.7rem',
-                                                    padding: '2px 8px',
-                                                    backgroundColor: i % 2 === 0 ? '#FF9800' : '#D32F2F',
-                                                    color: 'white',
-                                                    borderRadius: '15px',
-                                                    fontWeight: 'bold'
-                                                }}>
-                                                    {i % 2 === 0 ? '표준 이미지 존재' : '표준 이미지 미준수'}
-                                                </span>
-                                                <input
-                                                    type="checkbox"
-                                                    checked={!!checkedItems[item]}
-                                                    onChange={(e) => setCheckedItems(prev => ({ ...prev, [item]: e.target.checked }))}
-                                                    style={{ cursor: 'pointer' }}
-                                                />
-                                            </div>
-                                        </div>
-                                    ))
-                                ) : (
-                                    <div style={{ textAlign: 'center', color: colors.textGray, fontSize: '0.85rem', padding: '20px' }}>
-                                        상단 테이블에서 점검할 상황을 선택하세요.
+                            <div style={{
+                                width: '550px',
+                                backgroundColor: 'white',
+                                borderRadius: '20px',
+                                padding: '30px',
+                                boxShadow: '0 20px 50px rgba(0,0,0,0.15)',
+                                position: 'relative',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                maxHeight: '85vh'
+                            }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px', borderBottom: `2px solid ${colors.border}`, paddingBottom: '15px' }}>
+                                    <div>
+                                        <h3 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 'bold', color: colors.textDark }}>업무점검 실행</h3>
+                                        <span style={{ fontSize: '0.9rem', color: colors.textGray }}>{selectedSop?.job} / {selectedSop?.tpo.place}</span>
                                     </div>
-                                )}
+                                    <button
+                                        onClick={() => setInspectionModalOpen(false)}
+                                        style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: colors.textGray }}
+                                    >✕</button>
+                                </div>
+
+                                <div style={{ marginBottom: '25px', padding: '20px', backgroundColor: '#F0F4F8', borderRadius: '12px', borderLeft: `6px solid ${colors.primaryBlue}` }}>
+                                    <div style={{ fontSize: '0.85rem', color: colors.primaryBlue, fontWeight: 'bold', marginBottom: '8px', textTransform: 'uppercase' }}>Check Point</div>
+                                    <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: colors.textDark, lineHeight: '1.5' }}>{selectedSop?.criteria.checklist}</div>
+                                </div>
+
+                                <div style={{ flex: 1, overflowY: 'auto', marginBottom: '25px', paddingRight: '5px' }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                        {selectedSop?.criteria.items.map((item, i) => (
+                                            <div key={i} style={{
+                                                display: 'flex',
+                                                justifyContent: 'space-between',
+                                                alignItems: 'center',
+                                                padding: '15px',
+                                                borderRadius: '12px',
+                                                border: checkedItems[item] ? `2px solid ${colors.primaryBlue}` : `1px solid ${colors.border}`,
+                                                backgroundColor: checkedItems[item] ? '#E3F2FD' : 'white',
+                                                transition: 'all 0.2s',
+                                                cursor: 'pointer'
+                                            }} onClick={() => setCheckedItems(prev => ({ ...prev, [item]: !prev[item] }))}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                                    <div style={{
+                                                        width: '24px',
+                                                        height: '24px',
+                                                        borderRadius: '50%',
+                                                        border: checkedItems[item] ? `6px solid ${colors.primaryBlue}` : `2px solid ${colors.textGray}`,
+                                                        backgroundColor: 'white',
+                                                        transition: 'all 0.2s'
+                                                    }} />
+                                                    <span style={{ fontSize: '1rem', color: colors.textDark, fontWeight: checkedItems[item] ? 'bold' : 'normal' }}>{item}</span>
+                                                </div>
+
+                                                {/* Simulated 'Standard Image' Badge Logic */}
+                                                <div style={{
+                                                    fontSize: '0.7rem',
+                                                    padding: '4px 10px',
+                                                    backgroundColor: i === 0 ? '#4CAF50' : '#ECEFF1',
+                                                    color: i === 0 ? 'white' : colors.textGray,
+                                                    borderRadius: '20px',
+                                                    fontWeight: 'bold',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '4px'
+                                                }}>
+                                                    {i === 0 ? '📷 표준 이미지' : 'No Image'}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div style={{ display: 'flex', gap: '12px', marginTop: 'auto' }}>
+                                    <button
+                                        onClick={() => setInspectionModalOpen(false)}
+                                        style={{ flex: 1, padding: '15px', border: `1px solid ${colors.border}`, borderRadius: '12px', backgroundColor: 'white', cursor: 'pointer', fontWeight: 'bold', fontSize: '1rem', color: colors.textGray }}
+                                    >
+                                        취소
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            const allChecked = selectedSop?.criteria.items.every(item => checkedItems[item]);
+                                            addInspectionResult({
+                                                time: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
+                                                name: '최민수',
+                                                area: selectedSop?.tpo.place,
+                                                item: selectedSop?.criteria.checklist,
+                                                status: allChecked ? 'O' : 'X',
+                                                role: selectedSop?.job,
+                                                reason: allChecked ? '' : '세부 항목 일부 미이행',
+                                                tpoId: selectedSop?.id
+                                            });
+                                            alert(allChecked ? '점검 결과가 정상 등록되었습니다.' : '미준수 항목이 발생하여 조치계획 보드로 자동 이관되었습니다.');
+                                            setCheckedItems({});
+                                            setInspectionModalOpen(false);
+                                        }}
+                                        style={{
+                                            flex: 2,
+                                            padding: '15px',
+                                            backgroundColor: colors.primaryBlue,
+                                            color: 'white',
+                                            border: 'none',
+                                            borderRadius: '12px',
+                                            cursor: 'pointer',
+                                            fontWeight: 'bold',
+                                            fontSize: '1rem',
+                                            boxShadow: '0 4px 12px rgba(33, 150, 243, 0.3)'
+                                        }}
+                                    >
+                                        점검 완료 및 저장
+                                    </button>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    )}
                 </div>
             ) : activeDoSubPhase === 'actionplan' ? (
                 <div>
@@ -535,6 +695,39 @@ export default function DoPhaseContent() {
                         ))}
                     </div>
                 </div>
+            ) : activeDoSubPhase === 'jobcard' ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <h2 style={{ fontSize: '1.4rem', fontWeight: 'bold', color: colors.textDark }}>직무카드 현황 (Job Cards)</h2>
+                        <div style={{ padding: '8px 20px', backgroundColor: colors.primaryBlue, color: 'white', borderRadius: '20px', fontWeight: 'bold' }}>
+                            전송된 직무카드: {jobInstructions.length}건
+                        </div>
+                    </div>
+
+                    {jobInstructions.length === 0 ? (
+                        <div style={{ padding: '50px', textAlign: 'center', backgroundColor: 'white', borderRadius: '15px', border: `1px solid ${colors.border}`, color: colors.textGray }}>
+                            전송된 직무카드가 없습니다. 업무지시 보드에서 직무카드를 생성하여 전송해주세요.
+                        </div>
+                    ) : (
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
+                            {jobInstructions.map(jobInstruction => (
+                                <div key={jobInstruction.id} style={{ backgroundColor: 'white', borderRadius: '15px', padding: '20px', border: `1px solid ${colors.border}`, boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', paddingBottom: '10px', borderBottom: `1px solid ${colors.border}` }}>
+                                        <span style={{ fontWeight: 'bold', color: colors.primaryBlue }}>To: {jobInstruction.assignee}</span>
+                                        <span style={{ fontSize: '0.8rem', color: colors.textGray }}>{new Date(jobInstruction.timestamp).toLocaleDateString()}</span>
+                                    </div>
+                                    <div style={{ fontWeight: 'bold', fontSize: '1.1rem', marginBottom: '10px' }}>{jobInstruction.subject}</div>
+                                    <div style={{ fontSize: '0.9rem', color: colors.textDark, lineHeight: '1.5', minHeight: '60px' }}>{jobInstruction.description}</div>
+                                    <div style={{ marginTop: '15px', display: 'flex', justifyContent: 'flex-end' }}>
+                                        <span style={{ padding: '4px 12px', borderRadius: '4px', backgroundColor: '#E3F2FD', color: colors.primaryBlue, fontSize: '0.8rem', fontWeight: 'bold' }}>
+                                            {jobInstruction.status === 'sent' ? '전송됨' : jobInstruction.status}
+                                        </span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
             ) : (
                 <div style={{
                     padding: '50px',
@@ -550,7 +743,8 @@ export default function DoPhaseContent() {
                     </h3>
                     <p>현재 '업무지시 보드' 및 '조치계획 보드' 기능이 활성화되어 있습니다.</p>
                 </div>
-            )}
+            )
+            }
         </>
     );
 }

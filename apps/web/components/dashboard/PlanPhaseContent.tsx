@@ -1,17 +1,12 @@
 'use client';
 
 import React from 'react';
+import { TpoData } from '@csmac/types';
 import { usePDCA } from '../../context/PDCAContext';
 import {
     colors,
     selectStyle,
-    inputPanelStyle,
-    panelTitleRow,
-    panelTitleText,
     pillButtonStyle,
-    tpoBtnStyle,
-    dropdownMenuStyle,
-    dropdownItemStyle,
     actionButtonStyle,
     thStyle,
     tdStyle,
@@ -29,14 +24,16 @@ export default function PlanPhaseContent() {
         criteriaOptions,
         activeDropdown, setActiveDropdown,
         selectedTpo, handleTpoSelect,
-        selectedCriteria, handleCriteriaSelect,
+        selectedCriteria,
         selectedMatching, handleMatchingSelect,
         registeredTpos,
         handleRegister,
         handleRemoveRegistered, handleEdit,
         isEditing,
         showTpoTooltip, setShowTpoTooltip,
-        currentCriteria
+        currentCriteria,
+        searchQuery, setSearchQuery,
+        placeOccasionMapping
     } = usePDCA();
 
     return (
@@ -50,303 +47,279 @@ export default function PlanPhaseContent() {
             {/* --- GROUPED SETTINGS SECTION --- */}
             <div style={{ border: `1px solid ${colors.border}`, borderRadius: '12px', padding: '25px', backgroundColor: '#FBFCFD', marginBottom: '40px' }}>
                 {/* Dropdowns Section */}
-                <div style={{ display: 'flex', gap: '20px', marginBottom: '25px', alignItems: 'center', backgroundColor: '#F3F5F7', padding: '15px', borderRadius: '8px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <label style={{ fontWeight: 'bold', color: colors.textDark, fontSize: '0.9rem' }}>사업장 설정</label>
-                        <select
-                            style={selectStyle}
-                            value={workplace}
-                            onChange={(e) => setWorkplace(e.target.value)}
-                        >
-                            <option value="소노벨 천안">소노벨 천안</option>
-                            <option value="소노벨 경주">소노벨 경주</option>
-                        </select>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <label style={{ fontWeight: 'bold', color: colors.textDark, fontSize: '0.9rem' }}>팀 설정</label>
-                        <select
-                            style={selectStyle}
-                            value={team}
-                            onChange={(e) => {
-                                const newTeam = e.target.value;
-                                if (teams[newTeam]) {
-                                    setTeam(newTeam);
-                                    setJob(teams[newTeam].jobs[0]);
-                                }
-                            }}
-                        >
-                            {Object.entries(teams).map(([key, info]) => (
-                                <option key={key} value={key}>{info.label}</option>
-                            ))}
-                        </select>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <label style={{ fontWeight: 'bold', color: colors.textDark, fontSize: '0.9rem' }}>직무 설정</label>
-                        <select
-                            style={selectStyle}
-                            value={job}
-                            onChange={(e) => setJob(e.target.value)}
-                        >
-                            {teams[team].jobs.map((j: string) => (
-                                <option key={j} value={j}>{j}</option>
-                            ))}
-                        </select>
-                    </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '15px', marginBottom: '20px' }}>
+                    {[
+                        { label: '브랜드', value: 'Grand Walkerhill' },
+                        { label: '사업장', value: workplace, setter: setWorkplace, options: ['소노벨 천안', '소노벨 경주'] },
+                        { label: '팀', value: team, setter: (v: string) => { setTeam(v); setJob(teams[v].jobs[0]); }, options: Object.keys(teams).map(k => ({ val: k, lab: teams[k].label })) },
+                        { label: '직무', value: job, setter: setJob, options: teams[team].jobs }
+                    ].map((cfg, i) => (
+                        <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                            <label style={{ fontSize: '0.8rem', fontWeight: 'bold', color: colors.textGray }}>{cfg.label}</label>
+                            <select
+                                style={{ ...selectStyle, width: '100%', borderRadius: '8px', padding: '10px' }}
+                                value={typeof cfg.value === 'string' ? cfg.value : ''}
+                                onChange={(e) => cfg.setter && cfg.setter(e.target.value)}
+                                disabled={!cfg.setter}
+                            >
+                                {cfg.options ? (
+                                    Array.isArray(cfg.options) ? (
+                                        cfg.options.map(opt => {
+                                            const val = typeof opt === 'string' ? opt : opt.val;
+                                            const lab = typeof opt === 'string' ? opt : opt.lab;
+                                            return <option key={val} value={val}>{lab}</option>;
+                                        })
+                                    ) : null
+                                ) : (
+                                    <option>{cfg.value}</option>
+                                )}
+                            </select>
+                        </div>
+                    ))}
                 </div>
 
-                {/* --- SEQUENTIAL INPUT PANELS --- */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
-                    {/* Panel 1: 업무수행 상황 설정 */}
-                    <div style={inputPanelStyle}>
-                        <div style={panelTitleRow}>
-                            <span style={panelTitleText}>업무수행 상황 설정</span>
-                            <button style={pillButtonStyle}>+ 상황 추가</button>
+                {/* Search Bar */}
+                <div style={{ position: 'relative', marginBottom: '25px' }}>
+                    <input
+                        type="text"
+                        placeholder="직무, 상황, 장소 등 키워드 검색..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        style={{
+                            width: '100%',
+                            padding: '12px 15px 12px 40px',
+                            border: `1px solid ${colors.border}`,
+                            borderRadius: '8px',
+                            fontSize: '0.9rem',
+                            backgroundColor: 'white'
+                        }}
+                    />
+                    <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: colors.textGray }}>🔍</span>
+                </div>
+
+                {/* --- REFACTORED INPUT PANELS --- */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    {/* TPO Row */}
+                    <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '12px', border: `1px solid ${colors.border}` }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px' }}>
+                            <span style={{ fontSize: '1.2rem', color: colors.textDark }}>📋</span>
+                            <span style={{ fontWeight: 'bold', fontSize: '1rem' }}>TPO 설정</span>
                         </div>
-                        <div style={{ border: `1px solid ${colors.textDark}`, borderRadius: '15px', padding: '15px', position: 'relative', minHeight: '140px', backgroundColor: 'white', flex: 1, display: 'flex', flexDirection: 'column' }}>
-                            <p style={{ margin: 0, fontSize: '0.9rem', color: colors.textDark, lineHeight: '1.4' }}>
-                                <span style={{ textDecoration: 'underline', textDecorationColor: 'red', textDecorationStyle: 'dotted' }}>직무별 반복되는</span> 일상업무<br />
-                                <span style={{ textDecoration: 'underline', textDecorationColor: 'red', textDecorationStyle: 'dotted' }}>상황을 TPO로</span> 설정해 주세요
-                            </p>
-
-                            {/* TPO Selectors Floating Below */}
-                            <div style={{ display: 'flex', gap: '8px', marginTop: '20px', position: 'absolute', bottom: '-20px', left: '15px', zIndex: 10 }}>
-                                {/* Time Dropdown */}
-                                <div style={{ position: 'relative' }}>
-                                    <div
-                                        onClick={() => setActiveDropdown(activeDropdown === 'time' ? null : 'time')}
-                                        style={{ ...tpoBtnStyle, borderColor: selectedTpo.time ? colors.primaryBlue : colors.textDark, color: selectedTpo.time ? colors.primaryBlue : colors.textGray }}
-                                    >
-                                        {selectedTpo.time || '시간'} <span style={{ marginLeft: '10px', fontSize: '0.7rem', color: colors.border }}>∨</span>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(200px, 1fr) minmax(300px, 1.5fr) minmax(300px, 1.5fr)', gap: '30px' }}>
+                            {[
+                                { category: 'time', label: 'Time', icon: '🕒' },
+                                { category: 'place', label: 'Place', icon: '📍' },
+                                { category: 'occasion', label: 'Occasion', icon: '❕' }
+                            ].map((cfg) => (
+                                <div key={cfg.category}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '12px' }}>
+                                        <span style={{ fontSize: '1rem', color: colors.textGray }}>{cfg.icon}</span>
+                                        <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: colors.textDark }}>{cfg.label}</span>
                                     </div>
-                                    {activeDropdown === 'time' && (
-                                        <div style={dropdownMenuStyle}>
-                                            {tpoOptions.time.map((opt: string) => (
-                                                <div key={opt} onClick={() => handleTpoSelect('time', opt)} style={dropdownItemStyle}>{opt}</div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* Place Dropdown */}
-                                <div style={{ position: 'relative' }}>
-                                    <div
-                                        onClick={() => setActiveDropdown(activeDropdown === 'place' ? null : 'place')}
-                                        style={{ ...tpoBtnStyle, borderColor: selectedTpo.place ? colors.primaryBlue : colors.textDark, color: selectedTpo.place ? colors.primaryBlue : colors.textGray }}
-                                    >
-                                        {selectedTpo.place || '장소'} <span style={{ marginLeft: '10px', fontSize: '0.7rem', color: colors.border }}>∨</span>
-                                    </div>
-                                    {activeDropdown === 'place' && (
-                                        <div style={dropdownMenuStyle}>
-                                            {tpoOptions.place.map((opt: string) => {
-                                                const hasCriteria = !selectedTpo.occasion || criteriaOptions[`${opt}|${selectedTpo.occasion}`];
-                                                return (
-                                                    <div
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                                        {(() => {
+                                            const allOptions = tpoOptions[cfg.category as keyof typeof tpoOptions];
+                                            if (cfg.category !== 'occasion' || !selectedTpo.place) {
+                                                return allOptions.map((opt: string) => (
+                                                    <button
                                                         key={opt}
-                                                        onClick={() => handleTpoSelect('place', opt)}
-                                                        style={{ ...dropdownItemStyle, opacity: hasCriteria ? 1 : 0.5 }}
-                                                    >
-                                                        {opt} {!hasCriteria && '(선택 불가)'}
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* Occasion Dropdown */}
-                                <div style={{ position: 'relative' }}>
-                                    <div
-                                        onClick={() => setActiveDropdown(activeDropdown === 'occasion' ? null : 'occasion')}
-                                        style={{ ...tpoBtnStyle, borderColor: selectedTpo.occasion ? colors.primaryBlue : colors.textDark, color: selectedTpo.occasion ? colors.primaryBlue : colors.textGray }}
-                                    >
-                                        {selectedTpo.occasion || '상황'} <span style={{ marginLeft: '10px', fontSize: '0.7rem', color: colors.border }}>∨</span>
-                                    </div>
-                                    {activeDropdown === 'occasion' && (
-                                        <div style={dropdownMenuStyle}>
-                                            {tpoOptions.occasion
-                                                .filter((opt: string) => !selectedTpo.place || criteriaOptions[`${selectedTpo.place}|${opt}`])
-                                                .map((opt: string) => (
-                                                    <div key={opt} onClick={() => handleTpoSelect('occasion', opt)} style={dropdownItemStyle}>{opt}</div>
-                                                ))
-                                            }
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Panel 2: 점검 기준 설정 */}
-                    <div style={inputPanelStyle}>
-                        <div style={panelTitleRow}>
-                            <span style={panelTitleText}>점검 기준 설정</span>
-                            <button style={pillButtonStyle}>+ 점검기준 추가</button>
-                        </div>
-                        <div style={{ border: `1px solid ${colors.textDark}`, borderRadius: '15px', padding: '15px', position: 'relative', minHeight: '140px', flex: 1, display: 'flex', flexDirection: 'column' }}>
-                            <p style={{ margin: 0, fontSize: '0.9rem', color: colors.textDark, lineHeight: '1.4' }}>
-                                <span style={{ textDecoration: 'underline', textDecorationColor: 'red', textDecorationStyle: 'dotted' }}>상황별 점검 질문(체크리스트)</span>과<br />
-                                <span style={{ textDecoration: 'underline', textDecorationColor: 'red', textDecorationStyle: 'dotted' }}>세부 점검 항목</span>을 설정해 주세요
-                            </p>
-
-                            <div style={{ display: 'flex', gap: '8px', marginTop: '20px', position: 'absolute', bottom: '-20px', left: '15px', zIndex: 10 }}>
-                                {/* Checklist Dropdown */}
-                                <div style={{ position: 'relative' }}>
-                                    <div
-                                        onClick={() => setActiveDropdown(activeDropdown === 'checklist' ? null : 'checklist')}
-                                        style={{ ...tpoBtnStyle, borderColor: selectedCriteria.checklist ? colors.primaryBlue : colors.textDark, color: selectedCriteria.checklist ? colors.primaryBlue : colors.textGray, minWidth: '120px' }}
-                                    >
-                                        {selectedCriteria.checklist ? (selectedCriteria.checklist.length > 10 ? selectedCriteria.checklist.substring(0, 10) + '...' : selectedCriteria.checklist) : '체크리스트 질문'} <span style={{ marginLeft: '10px', fontSize: '0.7rem', color: colors.border }}>∨</span>
-                                    </div>
-                                    {activeDropdown === 'checklist' && (
-                                        <div style={{ ...dropdownMenuStyle, width: '250px' }}>
-                                            {currentCriteria ? (
-                                                <div onClick={() => handleCriteriaSelect('checklist', currentCriteria.checklist)} style={dropdownItemStyle}>{currentCriteria.checklist}</div>
-                                            ) : (
-                                                <div style={{ ...dropdownItemStyle, color: colors.textGray, cursor: 'default' }}>
-                                                    {selectedTpo.place && selectedTpo.occasion
-                                                        ? '등록된 점검 기준이 없습니다.'
-                                                        : 'TPO(장소/상황)를 먼저 선택해 주세요'}
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* Items Dropdown (Multi-select) */}
-                                <div style={{ position: 'relative' }}>
-                                    <div
-                                        onClick={() => setActiveDropdown(activeDropdown === 'criteriaItems' ? null : 'criteriaItems')}
-                                        style={{ ...tpoBtnStyle, borderColor: selectedCriteria.items.length > 0 ? colors.primaryBlue : colors.textDark, color: selectedCriteria.items.length > 0 ? colors.primaryBlue : colors.textGray, minWidth: '120px' }}
-                                    >
-                                        {selectedCriteria.items.length > 0 ? `항목 ${selectedCriteria.items.length}개 선택` : '세부 점검 항목'} <span style={{ marginLeft: '10px', fontSize: '0.7rem', color: colors.border }}>∨</span>
-                                    </div>
-                                    {activeDropdown === 'criteriaItems' && (
-                                        <div style={{ ...dropdownMenuStyle, width: '250px' }}>
-                                            {currentCriteria ? (
-                                                currentCriteria.items.map((opt: string) => (
-                                                    <div
-                                                        key={opt}
-                                                        onClick={() => handleCriteriaSelect('criteriaItems', opt)}
+                                                        type="button"
+                                                        onClick={() => handleTpoSelect(cfg.category as 'time' | 'place' | 'occasion', opt)}
                                                         style={{
-                                                            ...dropdownItemStyle,
-                                                            backgroundColor: selectedCriteria.items.includes(opt) ? colors.lightBlue : 'transparent',
-                                                            display: 'flex',
-                                                            justifyContent: 'space-between'
+                                                            padding: '5px 15px',
+                                                            borderRadius: '20px',
+                                                            border: `1px solid ${selectedTpo[cfg.category as keyof TpoData] === opt ? colors.primaryBlue : '#E9ECEF'}`,
+                                                            backgroundColor: selectedTpo[cfg.category as keyof TpoData] === opt ? colors.primaryBlue : 'white',
+                                                            color: selectedTpo[cfg.category as keyof TpoData] === opt ? 'white' : colors.textGray,
+                                                            fontSize: '0.8rem',
+                                                            cursor: 'pointer',
+                                                            transition: 'all 0.2s',
+                                                            boxShadow: selectedTpo[cfg.category as keyof TpoData] === opt ? '0 2px 4px rgba(0,0,0,0.1)' : 'none'
                                                         }}
                                                     >
                                                         {opt}
-                                                        {selectedCriteria.items.includes(opt) && <span style={{ color: colors.primaryBlue }}>✓</span>}
-                                                    </div>
-                                                ))
-                                            ) : (
-                                                <div style={{ ...dropdownItemStyle, color: colors.textGray, cursor: 'default' }}>
-                                                    {selectedTpo.place && selectedTpo.occasion
-                                                        ? '등록된 세부 항목이 없습니다.'
-                                                        : 'TPO(장소/상황)를 먼저 선택해 주세요'}
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
+                                                    </button>
+                                                ));
+                                            }
+
+                                            // Occasion recommendation logic
+                                            const recommended = placeOccasionMapping[selectedTpo.place] || [];
+                                            const recommendedOptions = allOptions.filter((opt: string) => recommended.includes(opt));
+                                            const otherOptions = allOptions.filter((opt: string) => !recommended.includes(opt));
+
+                                            return (
+                                                <>
+                                                    {recommendedOptions.map((opt: string) => (
+                                                        <button
+                                                            key={opt}
+                                                            type="button"
+                                                            onClick={() => handleTpoSelect('occasion', opt)}
+                                                            style={{
+                                                                padding: '5px 15px',
+                                                                borderRadius: '20px',
+                                                                border: `1px solid ${selectedTpo.occasion === opt ? colors.primaryBlue : colors.primaryBlue}`,
+                                                                backgroundColor: selectedTpo.occasion === opt ? colors.primaryBlue : '#F0F7FF',
+                                                                color: selectedTpo.occasion === opt ? 'white' : colors.primaryBlue,
+                                                                fontSize: '0.8rem',
+                                                                fontWeight: 'bold',
+                                                                cursor: 'pointer',
+                                                                transition: 'all 0.2s',
+                                                                boxShadow: selectedTpo.occasion === opt ? '0 2px 4px rgba(0,0,0,0.1)' : 'none'
+                                                            }}
+                                                        >
+                                                            ✨ {opt}
+                                                        </button>
+                                                    ))}
+                                                    {otherOptions.map((opt: string) => (
+                                                        <button
+                                                            key={opt}
+                                                            type="button"
+                                                            onClick={() => handleTpoSelect('occasion', opt)}
+                                                            style={{
+                                                                padding: '5px 15px',
+                                                                borderRadius: '20px',
+                                                                border: `1px solid ${selectedTpo.occasion === opt ? colors.primaryBlue : '#E9ECEF'}`,
+                                                                backgroundColor: selectedTpo.occasion === opt ? colors.primaryBlue : 'white',
+                                                                color: selectedTpo.occasion === opt ? 'white' : colors.textGray,
+                                                                fontSize: '0.8rem',
+                                                                cursor: 'pointer',
+                                                                transition: 'all 0.2s',
+                                                                opacity: 0.6
+                                                            }}
+                                                        >
+                                                            {opt}
+                                                        </button>
+                                                    ))}
+                                                </>
+                                            );
+                                        })()}
+                                    </div>
                                 </div>
-                            </div>
+                            ))}
                         </div>
                     </div>
 
-                    {/* Panel 3: 업무요소 매칭 */}
-                    <div style={inputPanelStyle}>
-                        <div style={panelTitleRow}>
-                            <span style={panelTitleText}>업무요소 <span style={{ textDecoration: 'underline', textDecorationColor: 'red', textDecorationStyle: 'dotted' }}>매칭</span></span>
-                        </div>
-                        <div style={{ border: `1px solid ${colors.textDark}`, borderRadius: '15px', padding: '15px', position: 'relative', minHeight: '140px', flex: 1, display: 'flex', flexDirection: 'column' }}>
-                            <p style={{ margin: 0, fontSize: '0.9rem', color: colors.textDark, lineHeight: '1.4' }}>
-                                <span style={{ textDecoration: 'underline', textDecorationColor: 'red', textDecorationStyle: 'dotted' }}>이행근거 요구(AI/육안)</span>와<br />
-                                <span style={{ textDecoration: 'underline', textDecorationColor: 'red', textDecorationStyle: 'dotted' }}>검증방법</span>을 업무요소와 매칭해 주세요
-                            </p>
-                            <div style={{ display: 'flex', gap: '8px', marginTop: '20px', position: 'absolute', bottom: '-20px', left: '15px', zIndex: 10 }}>
-                                {/* Evidence Dropdown */}
-                                <div style={{ position: 'relative' }}>
-                                    <div
-                                        onClick={() => setActiveDropdown(activeDropdown === 'evidence' ? null : 'evidence')}
-                                        style={{ ...tpoBtnStyle, borderColor: selectedMatching.evidence ? colors.primaryBlue : colors.textDark, color: selectedMatching.evidence ? colors.primaryBlue : colors.textGray, minWidth: '100px' }}
-                                    >
-                                        {selectedMatching.evidence || '이행근거'} <span style={{ marginLeft: '10px', fontSize: '0.7rem', color: colors.border }}>∨</span>
-                                    </div>
-                                    {activeDropdown === 'evidence' && (
-                                        <div style={dropdownMenuStyle}>
-                                            {['AI', '육안'].map(opt => (
-                                                <div key={opt} onClick={() => handleMatchingSelect('evidence', opt)} style={dropdownItemStyle}>{opt}</div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* Method Dropdown */}
-                                <div style={{ position: 'relative' }}>
-                                    <div
-                                        onClick={() => setActiveDropdown(activeDropdown === 'method' ? null : 'method')}
-                                        style={{ ...tpoBtnStyle, borderColor: selectedMatching.method ? colors.primaryBlue : colors.textDark, color: selectedMatching.method ? colors.primaryBlue : colors.textGray, minWidth: '100px' }}
-                                    >
-                                        {selectedMatching.method || '검증방법'} <span style={{ marginLeft: '10px', fontSize: '0.7rem', color: colors.border }}>∨</span>
-                                    </div>
-                                    {activeDropdown === 'method' && (
-                                        <div style={dropdownMenuStyle}>
-                                            {['지정'].map(opt => (
-                                                <div key={opt} onClick={() => handleMatchingSelect('method', opt)} style={dropdownItemStyle}>{opt}</div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
+                    {/* Criteria & Checklist Row */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                        {/* 기준 이미지 Panel */}
+                        <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '12px', border: `1px solid ${colors.border}` }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '15px' }}>
+                                <span style={{ fontSize: '1.2rem' }}>🖼️</span>
+                                <span style={{ fontWeight: 'bold', fontSize: '1rem' }}>기준 이미지</span>
+                                <span style={{ fontSize: '0.7rem', color: colors.textGray, marginLeft: 'auto' }}>최대 5장</span>
                             </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Action Buttons */}
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '20px', gap: '10px' }}>
-                    <div style={{ position: 'relative' }}>
-                        <button
-                            onMouseEnter={() => setShowTpoTooltip(true)}
-                            onMouseLeave={() => setShowTpoTooltip(false)}
-                            style={{ ...actionButtonStyle, backgroundColor: 'white', color: colors.primaryBlue }}
-                        >
-                            상황 추가
-                        </button>
-                        {showTpoTooltip && (
                             <div style={{
-                                position: 'absolute',
-                                bottom: '100%',
-                                right: 0,
-                                backgroundColor: colors.textDark,
-                                color: 'white',
-                                padding: '8px 12px',
-                                borderRadius: '6px',
-                                fontSize: '0.8rem',
-                                width: '280px',
-                                marginBottom: '10px',
-                                zIndex: 1000,
-                                lineHeight: '1.4',
-                                boxShadow: '0 2px 10px rgba(0,0,0,0.2)'
+                                height: '180px',
+                                border: `2px dashed ${colors.border}`,
+                                borderRadius: '12px',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                backgroundColor: '#F8F9FA',
+                                cursor: 'pointer'
                             }}>
-                                설정된 '업무수행 상황 + 점검 기준 + 업무요소 매칭' 세트를 리스트에 추가하는 기능입니다. (현재 미구현)
-                                <div style={{
-                                    position: 'absolute',
-                                    top: '100%',
-                                    right: '20px',
-                                    borderWidth: '5px',
-                                    borderStyle: 'solid',
-                                    borderColor: `${colors.textDark} transparent transparent transparent`
-                                }}></div>
+                                <span style={{ fontSize: '2rem', color: colors.border }}>☁️</span>
+                                <div style={{ fontSize: '0.9rem', fontWeight: 'bold', color: colors.textDark, marginTop: '10px' }}>이미지 업로드</div>
+                                <div style={{ fontSize: '0.7rem', color: colors.textGray }}>드래그 앤 드롭</div>
                             </div>
-                        )}
+                        </div>
+
+                        {/* 체크리스트 Panel */}
+                        <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '12px', border: `1px solid ${colors.border}` }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '15px' }}>
+                                <span style={{ fontSize: '1.2rem' }}>✅</span>
+                                <span style={{ fontWeight: 'bold', fontSize: '1rem' }}>체크리스트</span>
+                                <span style={{ fontSize: '0.7rem', color: colors.textGray, marginLeft: 'auto' }}>필수 항목</span>
+                            </div>
+
+                            <div style={{ border: `1px solid ${colors.border}`, borderRadius: '8px', overflow: 'hidden' }}>
+                                {/* Input field and Add button */}
+                                <div style={{ display: 'flex', alignItems: 'center', padding: '8px 12px', borderBottom: `1px solid ${colors.border}` }}>
+                                    <input
+                                        type="text"
+                                        placeholder="항목 입력"
+                                        style={{ flex: 1, border: 'none', outline: 'none', fontSize: '0.85rem' }}
+                                    />
+                                    <button style={{
+                                        backgroundColor: colors.primaryBlue,
+                                        color: 'white',
+                                        border: 'none',
+                                        borderRadius: '4px',
+                                        width: '24px',
+                                        height: '24px',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        fontSize: '1.1rem'
+                                    }}>+</button>
+                                </div>
+
+                                {/* Checklist Items */}
+                                <div style={{ height: '130px', overflowY: 'auto', padding: '12px' }}>
+                                    {currentCriteria ? (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                            {currentCriteria.items.map((item, idx) => (
+                                                <div key={idx} style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                                                    <input type="checkbox" defaultChecked readOnly style={{ accentColor: colors.primaryBlue }} />
+                                                    <span style={{ fontSize: '0.85rem', color: colors.textDark }}>{item}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <span style={{ fontSize: '0.8rem', color: colors.textGray }}>TPO를 선택하세요</span>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
-                    <button
-                        onClick={handleRegister}
-                        style={{ ...actionButtonStyle, backgroundColor: colors.primaryBlue, color: 'white' }}
-                    >
-                        {isEditing !== null ? '수정 완료' : '등록하기'}
-                    </button>
+                    {/* 업무요소 매칭 (Bottom of groupings) */}
+                    <div style={{ padding: '20px', backgroundColor: '#F8F9FA', borderRadius: '12px', border: `1px solid #E9ECEF` }}>
+                        <div style={{ fontWeight: 'bold', fontSize: '0.9rem', marginBottom: '15px', color: colors.textDark }}>업무요소 매칭</div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '15px' }}>
+                            {[
+                                { name: '정확성', id: 'accuracy', icon: '🎯' },
+                                { name: '신속성', id: 'speed', icon: '⚡' },
+                                { name: '충성도', id: 'loyalty', icon: '💎' },
+                                { name: '업무공유', id: 'sharing', icon: '💬' }
+                            ].map((elem) => (
+                                <button
+                                    key={elem.id}
+                                    type="button"
+                                    onClick={() => handleMatchingSelect('elements', elem.name)}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '10px',
+                                        padding: '12px',
+                                        backgroundColor: selectedMatching.elements?.includes(elem.name) ? colors.primaryBlue : 'white',
+                                        color: selectedMatching.elements?.includes(elem.name) ? 'white' : colors.textDark,
+                                        border: `1px solid ${selectedMatching.elements?.includes(elem.name) ? colors.primaryBlue : colors.border}`,
+                                        borderRadius: '8px',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s'
+                                    }}
+                                >
+                                    <span style={{ fontSize: '1.2rem' }}>{elem.icon}</span>
+                                    <span style={{ fontWeight: 'bold', fontSize: '0.85rem' }}>{elem.name}</span>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
                 </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '20px', gap: '10px' }}>
+                <button
+                    type="button"
+                    onClick={handleRegister}
+                    style={{ ...actionButtonStyle, backgroundColor: colors.primaryBlue, color: 'white' }}
+                >
+                    {isEditing !== null ? '수정 완료' : '등록하기'}
+                </button>
             </div>
 
             {/* --- REGISTERED LIST SECTION --- */}
@@ -355,106 +328,52 @@ export default function PlanPhaseContent() {
                     <h2 style={{ fontSize: '1.1rem', fontWeight: 'bold', color: colors.textDark }}>TPO 등록 리스트</h2>
                 </div>
 
-                <table style={{ width: '100%', borderCollapse: 'collapse', border: `1px solid ${colors.border}`, minWidth: '940px' }}>
-                    <thead>
-                        <tr style={{ backgroundColor: colors.headerBlue }}>
-                            <th style={{ ...thStyle, width: '100px' }}>관리</th>
-                            <th style={thStyle}>사업장 / 팀</th>
-                            <th style={thStyle}>직무 / 업무</th>
-                            <th style={{ ...thStyle, width: '200px' }}>TPO 상황 설정</th>
-                            <th style={thStyle}>점검 체크리스트 (질문)</th>
-                            <th style={thStyle}>점검 항목</th>
-                            <th style={thStyle}>표준 이미지 / 업무요소</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {registeredTpos.length > 0 ? (
-                            registeredTpos.map((item) => (
-                                <tr key={item.id} style={{ backgroundColor: isEditing === item.id ? colors.lightBlue : 'transparent' }}>
-                                    <td style={{ ...tdStyle, textAlign: 'center' }}>
-                                        <div style={{ display: 'flex', gap: '5px', justifyContent: 'center' }}>
-                                            <button
-                                                onClick={() => handleEdit(item.id)}
-                                                style={{
-                                                    fontSize: '0.75rem',
-                                                    color: colors.primaryBlue,
-                                                    border: `1px solid ${colors.primaryBlue}`,
-                                                    borderRadius: '4px',
-                                                    backgroundColor: 'white',
-                                                    cursor: 'pointer',
-                                                    padding: '4px 8px',
-                                                    fontWeight: 'bold'
-                                                }}
-                                            >
-                                                수정
-                                            </button>
-                                            <button
-                                                onClick={() => handleRemoveRegistered(item.id)}
-                                                style={{
-                                                    fontSize: '0.75rem',
-                                                    color: '#D32F2F',
-                                                    border: '1px solid #D32F2F',
-                                                    borderRadius: '4px',
-                                                    backgroundColor: 'white',
-                                                    cursor: 'pointer',
-                                                    padding: '4px 8px',
-                                                }}
-                                            >
-                                                삭제
-                                            </button>
-                                        </div>
-                                    </td>
-                                    <td style={tdStyle}>
-                                        <div style={{ fontWeight: 'bold', color: colors.primaryBlue }}>
-                                            {item.workplace}
-                                        </div>
-                                        <div style={{ fontSize: '0.9rem', color: colors.textDark, marginTop: '2px' }}>
-                                            {teams[item.team]?.label || item.team}
-                                        </div>
-                                    </td>
-                                    <td style={tdStyle}>
-                                        <div style={{ fontWeight: 'bold' }}>{item.job}</div>
-                                        <div style={{ fontSize: '0.9rem', color: colors.textGray }}>{item.tpo.time}</div>
-                                    </td>
-                                    <td style={tdStyle}>
-                                        <div style={tpoTag}>시간: {item.tpo.time || '지정되지 않음'}</div>
-                                        <div style={tpoTag}>장소: {item.tpo.place || '지정되지 않음'}</div>
-                                        <div style={tpoTag}>상황: {item.tpo.occasion || '지정되지 않음'}</div>
-                                    </td>
-                                    <td style={tdStyle}>
-                                        <div style={{ fontSize: '0.95rem' }}>{item.criteria.checklist}</div>
-                                        <div style={{ marginTop: '5px', fontSize: '0.8rem', color: colors.primaryBlue }}>이행여부: 확인</div>
-                                    </td>
-                                    <td style={tdStyle}>
-                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                                            {item.criteria.items.map((it: string) => (
-                                                <span key={it} style={itemTag}>{it}</span>
-                                            ))}
-                                        </div>
-                                    </td>
-                                    <td style={tdStyle}>
-                                        <div style={{ marginBottom: '5px', fontSize: '0.85rem', color: colors.textGray }}>이행근거: {item.matching.evidence || '지정되지 않음'}</div>
-                                        <div style={{
-                                            padding: '4px 8px',
-                                            backgroundColor: '#EEEEEE',
-                                            borderRadius: '4px',
-                                            fontSize: '0.8rem',
-                                            display: 'inline-block'
-                                        }}>
-                                            검증방법: {item.matching.method || '지정되지 않음'}
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))
-                        ) : (
-                            <tr>
-                                <td colSpan={7} style={{ ...tdStyle, textAlign: 'center', padding: '40px', color: colors.textGray }}>
-                                    등록된 상황이 없습니다. 상단에서 설정 후 '등록하기' 버튼을 눌러주세요.
-                                </td>
+                <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', border: `1px solid ${colors.border}`, minWidth: '940px' }}>
+                        <thead>
+                            <tr style={{ backgroundColor: '#CFD9EA' }}>
+                                <th style={{ ...thStyle, width: '100px' }}>관리</th>
+                                <th style={thStyle}>사업장 / 팀</th>
+                                <th style={thStyle}>직무 / 업무</th>
+                                <th style={{ ...thStyle, width: '200px' }}>TPO 상황 설정</th>
+                                <th style={thStyle}>체크리스트</th>
+                                <th style={thStyle}>업무요소</th>
                             </tr>
-                        )}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            {registeredTpos.length > 0 ? (
+                                registeredTpos.map((item) => (
+                                    <tr key={item.id} style={{ backgroundColor: isEditing === item.id ? colors.lightBlue : 'transparent' }}>
+                                        <td style={{ ...tdStyle, textAlign: 'center' }}>
+                                            <div style={{ display: 'flex', gap: '5px', justifyContent: 'center' }}>
+                                                <button onClick={() => handleEdit(item.id)} style={{ fontSize: '0.75rem', color: colors.primaryBlue, cursor: 'pointer' }}>수정</button>
+                                                <button onClick={() => handleRemoveRegistered(item.id)} style={{ fontSize: '0.75rem', color: '#D32F2F', cursor: 'pointer' }}>삭제</button>
+                                            </div>
+                                        </td>
+                                        <td style={tdStyle}>
+                                            <div style={{ fontWeight: 'bold' }}>{item.workplace}</div>
+                                            <div style={{ fontSize: '0.85rem' }}>{teams[item.team]?.label || item.team}</div>
+                                        </td>
+                                        <td style={tdStyle}>{item.job}</td>
+                                        <td style={tdStyle}>
+                                            <div style={tpoTag}>{item.tpo.time} | {item.tpo.place} | {item.tpo.occasion}</div>
+                                        </td>
+                                        <td style={tdStyle}>{item.criteria.checklist}</td>
+                                        <td style={tdStyle}>
+                                            <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                                                {item.matching.elements?.map(e => <span key={e} style={itemTag}>{e}</span>)}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))
+                            ) : (
+                                <tr>
+                                    <td colSpan={6} style={{ ...tdStyle, textAlign: 'center', padding: '40px' }}>등록된 항목이 없습니다.</td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </>
     );
