@@ -206,6 +206,70 @@ export default function PlanPhaseContent() {
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '15px' }}>
                                 <span style={{ fontSize: '1.2rem' }}>🖼️</span>
                                 <span style={{ fontWeight: 'bold', fontSize: '1rem' }}>기준 이미지</span>
+
+                                {/* Tooltip Question Mark */}
+                                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                                    <div
+                                        onMouseEnter={(e) => {
+                                            const tooltip = e.currentTarget.nextElementSibling as HTMLElement;
+                                            if (tooltip) tooltip.style.opacity = '1';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            const tooltip = e.currentTarget.nextElementSibling as HTMLElement;
+                                            if (tooltip) tooltip.style.opacity = '0';
+                                        }}
+                                        style={{
+                                            width: '18px',
+                                            height: '18px',
+                                            backgroundColor: colors.primaryBlue,
+                                            color: 'white',
+                                            borderRadius: '50%',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            fontSize: '0.75rem',
+                                            cursor: 'help',
+                                            fontWeight: 'bold',
+                                            boxShadow: '0 2px 4px rgba(33, 150, 243, 0.3)',
+                                            marginLeft: '4px'
+                                        }}
+                                    >
+                                        ?
+                                    </div>
+                                    <div style={{
+                                        position: 'absolute',
+                                        bottom: '30px',
+                                        left: '50%',
+                                        transform: 'translateX(-50%)',
+                                        backgroundColor: '#333',
+                                        color: 'white',
+                                        padding: '12px',
+                                        borderRadius: '8px',
+                                        fontSize: '0.8rem',
+                                        width: '280px',
+                                        zIndex: 100,
+                                        opacity: 0,
+                                        transition: 'opacity 0.2s',
+                                        pointerEvents: 'none',
+                                        lineHeight: '1.4',
+                                        textAlign: 'center',
+                                        boxShadow: '0 10px 25px rgba(0,0,0,0.2)'
+                                    }}>
+                                        체크리스트에 있는 항목에 대응하는 이미지를 등록할 때, 어떤 이미지가 체크리스트의 어떤 항목에 대응하게 할 것인가?
+                                        <div style={{
+                                            position: 'absolute',
+                                            bottom: '-6px',
+                                            left: '50%',
+                                            marginLeft: '-6px',
+                                            width: 0,
+                                            height: 0,
+                                            borderLeft: '6px solid transparent',
+                                            borderRight: '6px solid transparent',
+                                            borderTop: '6px solid #333'
+                                        }} />
+                                    </div>
+                                </div>
+
                                 <span style={{ fontSize: '0.7rem', color: colors.textGray, marginLeft: 'auto' }}>최대 5장</span>
                             </div>
                             <div style={{
