@@ -404,7 +404,7 @@ export default function DoPhaseContent() {
                                     <th style={{ padding: '15px 10px', fontWeight: 'bold', width: '100px' }}>Place</th>
                                     <th style={{ padding: '15px 10px', fontWeight: 'bold', width: '150px' }}>Occasion</th>
                                     <th style={{ padding: '15px 10px', fontWeight: 'bold', textAlign: 'left' }}>체크리스트 (점검 항목)</th>
-                                    <th style={{ padding: '15px 10px', fontWeight: 'bold', width: '100px' }}>평가</th>
+                                    <th style={{ padding: '15px 10px', fontWeight: 'bold', width: '100px' }}>세분화설정</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -459,7 +459,7 @@ export default function DoPhaseContent() {
                                                         e.currentTarget.style.color = colors.primaryBlue;
                                                     }}
                                                 >
-                                                    점검하기
+                                                    이미지등록 및 분배
                                                 </button>
                                             </td>
                                         </tr>
@@ -505,7 +505,7 @@ export default function DoPhaseContent() {
                             }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px', borderBottom: `2px solid ${colors.border}`, paddingBottom: '15px' }}>
                                     <div>
-                                        <h3 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 'bold', color: colors.textDark }}>업무점검 실행</h3>
+                                        <h3 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 'bold', color: colors.textDark }}>업무 세분화 및 표준 수립</h3>
                                         <span style={{ fontSize: '0.9rem', color: colors.textGray }}>{selectedSop?.job} / {selectedSop?.tpo.place}</span>
                                     </div>
                                     <button
@@ -515,7 +515,7 @@ export default function DoPhaseContent() {
                                 </div>
 
                                 <div style={{ marginBottom: '25px', padding: '20px', backgroundColor: '#F0F4F8', borderRadius: '12px', borderLeft: `6px solid ${colors.primaryBlue}` }}>
-                                    <div style={{ fontSize: '0.85rem', color: colors.primaryBlue, fontWeight: 'bold', marginBottom: '8px', textTransform: 'uppercase' }}>Check Point</div>
+                                    <div style={{ fontSize: '0.85rem', color: colors.primaryBlue, fontWeight: 'bold', marginBottom: '8px', textTransform: 'uppercase' }}>Standard Objective</div>
                                     <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: colors.textDark, lineHeight: '1.5' }}>{selectedSop?.criteria.checklist}</div>
                                 </div>
 
@@ -545,7 +545,7 @@ export default function DoPhaseContent() {
                                                     <span style={{ fontSize: '1rem', color: colors.textDark, fontWeight: checkedItems[item] ? 'bold' : 'normal' }}>{item}</span>
                                                 </div>
 
-                                                {/* Simulated 'Standard Image' Badge Logic */}
+                                                {/* UI for Image Registration */}
                                                 <div style={{
                                                     fontSize: '0.7rem',
                                                     padding: '4px 10px',
@@ -557,7 +557,7 @@ export default function DoPhaseContent() {
                                                     alignItems: 'center',
                                                     gap: '4px'
                                                 }}>
-                                                    {i === 0 ? '📷 표준 이미지' : 'No Image'}
+                                                    {i === 0 ? '📷 표준 이미지 등록됨' : '➕ 이미지 등록'}
                                                 </div>
                                             </div>
                                         ))}
@@ -573,18 +573,7 @@ export default function DoPhaseContent() {
                                     </button>
                                     <button
                                         onClick={() => {
-                                            const allChecked = selectedSop?.criteria.items.every(item => checkedItems[item]);
-                                            addInspectionResult({
-                                                time: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
-                                                name: '최민수',
-                                                area: selectedSop?.tpo.place,
-                                                item: selectedSop?.criteria.checklist,
-                                                status: allChecked ? 'O' : 'X',
-                                                role: selectedSop?.job,
-                                                reason: allChecked ? '' : '세부 항목 일부 미이행',
-                                                tpoId: selectedSop?.id
-                                            });
-                                            alert(allChecked ? '점검 결과가 정상 등록되었습니다.' : '미준수 항목이 발생하여 조치계획 보드로 자동 이관되었습니다.');
+                                            alert(`[${selectedSop?.job}] 표준 이미지 등록이 완료되었습니다.\n설정된 가이드라인이 실무자 기기로 분배되었습니다.`);
                                             setCheckedItems({});
                                             setInspectionModalOpen(false);
                                         }}
@@ -601,7 +590,7 @@ export default function DoPhaseContent() {
                                             boxShadow: '0 4px 12px rgba(33, 150, 243, 0.3)'
                                         }}
                                     >
-                                        점검 완료 및 저장
+                                        표준 등록 및 업무 분배
                                     </button>
                                 </div>
                             </div>
