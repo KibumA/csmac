@@ -35,6 +35,7 @@ export default function PlanPhaseContent() {
         searchQuery, setSearchQuery,
         placeOccasionMapping
     } = usePDCA();
+    const [showStandardImageTooltip, setShowStandardImageTooltip] = React.useState(false);
 
     return (
         <>
@@ -201,94 +202,6 @@ export default function PlanPhaseContent() {
 
                     {/* Criteria & Checklist Row */}
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-                        {/* 기준 이미지 Panel */}
-                        <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '12px', border: `1px solid ${colors.border}` }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '15px' }}>
-                                <span style={{ fontSize: '1.2rem' }}>🖼️</span>
-                                <span style={{ fontWeight: 'bold', fontSize: '1rem' }}>기준 이미지</span>
-
-                                {/* Tooltip Question Mark */}
-                                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                                    <div
-                                        onMouseEnter={(e) => {
-                                            const tooltip = e.currentTarget.nextElementSibling as HTMLElement;
-                                            if (tooltip) tooltip.style.opacity = '1';
-                                        }}
-                                        onMouseLeave={(e) => {
-                                            const tooltip = e.currentTarget.nextElementSibling as HTMLElement;
-                                            if (tooltip) tooltip.style.opacity = '0';
-                                        }}
-                                        style={{
-                                            width: '18px',
-                                            height: '18px',
-                                            backgroundColor: colors.primaryBlue,
-                                            color: 'white',
-                                            borderRadius: '50%',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            fontSize: '0.75rem',
-                                            cursor: 'help',
-                                            fontWeight: 'bold',
-                                            boxShadow: '0 2px 4px rgba(33, 150, 243, 0.3)',
-                                            marginLeft: '4px'
-                                        }}
-                                    >
-                                        ?
-                                    </div>
-                                    <div style={{
-                                        position: 'absolute',
-                                        bottom: '30px',
-                                        left: '50%',
-                                        transform: 'translateX(-50%)',
-                                        backgroundColor: '#333',
-                                        color: 'white',
-                                        padding: '12px',
-                                        borderRadius: '8px',
-                                        fontSize: '0.8rem',
-                                        width: '280px',
-                                        zIndex: 100,
-                                        opacity: 0,
-                                        transition: 'opacity 0.2s',
-                                        pointerEvents: 'none',
-                                        lineHeight: '1.4',
-                                        textAlign: 'center',
-                                        boxShadow: '0 10px 25px rgba(0,0,0,0.2)'
-                                    }}>
-                                        체크리스트에 있는 항목에 대응하는 이미지를 등록할 때, 어떤 이미지가 체크리스트의 어떤 항목에 대응하게 할 것인가?
-                                        <div style={{
-                                            position: 'absolute',
-                                            bottom: '-6px',
-                                            left: '50%',
-                                            marginLeft: '-6px',
-                                            width: 0,
-                                            height: 0,
-                                            borderLeft: '6px solid transparent',
-                                            borderRight: '6px solid transparent',
-                                            borderTop: '6px solid #333'
-                                        }} />
-                                    </div>
-                                </div>
-
-                                <span style={{ fontSize: '0.7rem', color: colors.textGray, marginLeft: 'auto' }}>최대 5장</span>
-                            </div>
-                            <div style={{
-                                height: '180px',
-                                border: `2px dashed ${colors.border}`,
-                                borderRadius: '12px',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                backgroundColor: '#F8F9FA',
-                                cursor: 'pointer'
-                            }}>
-                                <span style={{ fontSize: '2rem', color: colors.border }}>☁️</span>
-                                <div style={{ fontSize: '0.9rem', fontWeight: 'bold', color: colors.textDark, marginTop: '10px' }}>이미지 업로드</div>
-                                <div style={{ fontSize: '0.7rem', color: colors.textGray }}>드래그 앤 드롭</div>
-                            </div>
-                        </div>
-
                         {/* 체크리스트 Panel */}
                         <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '12px', border: `1px solid ${colors.border}` }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '15px' }}>
@@ -335,6 +248,86 @@ export default function PlanPhaseContent() {
                                         <span style={{ fontSize: '0.8rem', color: colors.textGray }}>TPO를 선택하세요</span>
                                     )}
                                 </div>
+                            </div>
+                        </div>
+
+                        {/* 기준 이미지 Panel */}
+                        <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '12px', border: `1px solid ${colors.border}` }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '15px' }}>
+                                <span style={{ fontSize: '1.2rem' }}>🖼️</span>
+                                <span style={{ fontWeight: 'bold', fontSize: '1rem' }}>기준 이미지</span>
+
+                                {/* Tooltip Question Mark */}
+                                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                                    <div
+                                        onClick={() => setShowStandardImageTooltip(!showStandardImageTooltip)}
+                                        style={{
+                                            width: '18px',
+                                            height: '18px',
+                                            backgroundColor: colors.primaryBlue,
+                                            color: 'white',
+                                            borderRadius: '50%',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            fontSize: '0.75rem',
+                                            cursor: 'pointer',
+                                            fontWeight: 'bold',
+                                            boxShadow: '0 2px 4px rgba(33, 150, 243, 0.3)',
+                                            marginLeft: '4px'
+                                        }}
+                                    >
+                                        ?
+                                    </div>
+                                    {showStandardImageTooltip && (
+                                        <div style={{
+                                            position: 'absolute',
+                                            bottom: '30px',
+                                            left: '50%',
+                                            transform: 'translateX(-50%)',
+                                            backgroundColor: '#333',
+                                            color: 'white',
+                                            padding: '12px',
+                                            borderRadius: '8px',
+                                            fontSize: '0.8rem',
+                                            width: '320px',
+                                            zIndex: 100,
+                                            boxShadow: '0 10px 25px rgba(0,0,0,0.2)',
+                                            lineHeight: '1.4',
+                                            textAlign: 'left'
+                                        }}>
+                                            체크리스트에 있는 항목에 대응하는 이미지/사진을 등록할 때, 하나의 이미지가 하나의 체크리스트 항목에 1:1로 대응해야 함. 그런데 그걸 어떻게 연결시킬것인가? 이미지 업로드 순번을 체크리스트의 항목 순번에 따라서 연결? 다른 방법 있나?
+                                            <div style={{
+                                                position: 'absolute',
+                                                bottom: '-6px',
+                                                left: '50%',
+                                                marginLeft: '-6px',
+                                                width: 0,
+                                                height: 0,
+                                                borderLeft: '6px solid transparent',
+                                                borderRight: '6px solid transparent',
+                                                borderTop: '6px solid #333'
+                                            }} />
+                                        </div>
+                                    )}
+                                </div>
+
+                                <span style={{ fontSize: '0.7rem', color: colors.textGray, marginLeft: 'auto' }}>최대 5장</span>
+                            </div>
+                            <div style={{
+                                height: '180px',
+                                border: `2px dashed ${colors.border}`,
+                                borderRadius: '12px',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                backgroundColor: '#F8F9FA',
+                                cursor: 'pointer'
+                            }}>
+                                <span style={{ fontSize: '2rem', color: colors.border }}>☁️</span>
+                                <div style={{ fontSize: '0.9rem', fontWeight: 'bold', color: colors.textDark, marginTop: '10px' }}>이미지 업로드</div>
+                                <div style={{ fontSize: '0.7rem', color: colors.textGray }}>드래그 앤 드롭</div>
                             </div>
                         </div>
                     </div>

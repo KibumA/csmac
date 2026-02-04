@@ -1,0 +1,151 @@
+import React, { useState } from 'react';
+import { usePDCA } from '../../../context/PDCAContext';
+import { colors } from '../../../styles/theme';
+
+interface InspectionModalProps {
+    setInspectionModalOpen: (open: boolean) => void;
+}
+
+export const InspectionModal: React.FC<InspectionModalProps> = ({ setInspectionModalOpen }) => {
+    const { registeredTpos, setupTasksToSop, selectedInspectionSopId } = usePDCA();
+    const [selectedItems, setSelectedItems] = useState<string[]>([]);
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+    const targetSop = registeredTpos.find(t => t.id === selectedInspectionSopId);
+
+    // Initialize selections removed to allow adding NEW configurations independent of existing ones.
+
+    if (!targetSop) return null;
+
+    const toggleItem = (itemText: string) => {
+        setSelectedItems(prev =>
+            prev.includes(itemText)
+                ? prev.filter(i => i !== itemText)
+                : [...prev, itemText]
+        );
+    };
+
+    return (
+        <div style={{
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000,
+            display: 'flex', justifyContent: 'center', alignItems: 'center'
+        }}>
+            <div style={{
+                width: '600px', maxHeight: '90vh', backgroundColor: 'white', borderRadius: '15px',
+                padding: '30px', boxShadow: '0 20px 50px rgba(0,0,0,0.2)',
+                display: 'flex', flexDirection: 'column', gap: '20px'
+            }}>
+                <div style={{ borderBottom: `2px solid ${colors.primaryBlue}`, paddingBottom: '15px' }}>
+                    <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: colors.textDark }}>업무 세분화 및 설정</div>
+                    <div style={{ fontSize: '0.9rem', color: colors.textGray }}>선택된 TPO 항목에 대한 구체적인 실행 가이드를 설정합니다.</div>
+                </div>
+
+                <div style={{ backgroundColor: '#F8F9FA', padding: '15px', borderRadius: '10px' }}>
+                    <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>대상 업무: {targetSop.criteria.checklist}</div>
+                    <div style={{ fontSize: '0.9rem', color: colors.textGray }}>
+                        [{targetSop.tpo.time}] {targetSop.tpo.place} - {targetSop.tpo.occasion}
+                    </div>
+                </div>
+
+                <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                    <div style={{ fontWeight: 'bold', fontSize: '1rem', borderBottom: `1px solid ${colors.border}`, paddingBottom: '10px' }}>세부 설정</div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        {targetSop.criteria.items.map((item, idx) => {
+                            const isSelected = selectedItems.includes(item);
+                            return (
+                                <div
+                                    key={idx}
+                                    onClick={() => toggleItem(item)}
+                                    style={{
+                                        padding: '15px 20px',
+                                        border: `1px solid ${isSelected ? colors.primaryBlue : colors.border}`,
+                                        borderRadius: '10px',
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        cursor: 'pointer',
+                                        backgroundColor: isSelected ? '#F0F7FF' : 'white',
+                                        transition: 'all 0.2s'
+                                    }}
+                                >
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                        <div style={{
+                                            fontWeight: isSelected ? 'bold' : 'normal',
+                                            color: isSelected ? colors.primaryBlue : colors.textDark,
+                                            fontSize: '0.95rem'
+                                        }}>
+                                            {item}
+                                        </div>
+                                    </div>
+                                    <span style={{
+                                        fontSize: '0.75rem',
+                                        padding: '2px 8px',
+                                        borderRadius: '4px',
+                                        backgroundColor: isSelected ? colors.primaryBlue : '#EEE',
+                                        color: isSelected ? 'white' : colors.textGray,
+                                        fontWeight: 'bold'
+                                    }}>
+                                        {isSelected ? '선택됨' : '미선택'}
+                                    </span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                {errorMessage && (
+                    <div style={{ color: '#D32F2F', marginBottom: '10px', textAlign: 'right', fontWeight: 'bold', fontSize: '0.9rem' }}>
+                        {errorMessage}
+                    </div>
+                )}
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', paddingTop: '10px', borderTop: `1px solid ${colors.border}` }}>
+                    <button
+                        onClick={() => setInspectionModalOpen(false)}
+                        style={{
+                            padding: '12px 30px', backgroundColor: '#EEE', color: colors.textDark,
+                            border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold'
+                        }}
+                    >
+                        취소
+                    </button>
+                    <button
+                        onClick={() => {
+                            setErrorMessage(null);
+                            // Duplicate Check logic: Iterate over array of arrays
+                            const currentSop = registeredTpos.find(t => t.id === selectedInspectionSopId);
+                            if (currentSop && currentSop.setupTasks) {
+                                const current = [...selectedItems].sort();
+                                const currentStr = JSON.stringify(current);
+
+                                const isDuplicate = currentSop.setupTasks.some(existingTasks => {
+                                    return JSON.stringify([...existingTasks].sort()) === currentStr;
+                                });
+
+                                if (isDuplicate) {
+                                    setErrorMessage('이미 등록된 설정입니다.');
+                                    return;
+                                }
+                            }
+
+                            if (selectedItems.length === 0) {
+                                if (!confirm('선택된 항목이 없습니다. 설정을 초기화하시겠습니까?')) return;
+                            }
+
+                            setupTasksToSop(selectedInspectionSopId, selectedItems);
+                            setInspectionModalOpen(false);
+                            alert('업무 세분화 및 설정이 저장되었습니다.');
+                        }}
+                        style={{
+                            padding: '12px 30px', backgroundColor: colors.primaryBlue, color: 'white',
+                            border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold'
+                        }}
+                    >
+                        설정 저장
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};

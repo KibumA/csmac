@@ -90,6 +90,7 @@ export interface RegisteredTpo {
     tpo: TpoData;
     criteria: CriteriaData;
     matching: MatchingData;
+    setupTasks?: string[][];
 }
 
 export interface TeamInfo {
