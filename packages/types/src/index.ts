@@ -71,9 +71,15 @@ export interface TpoData {
     occasion: string;
 }
 
+export interface ChecklistItem {
+    content: string;
+    imageFile?: File;
+    imageUrl?: string;
+}
+
 export interface CriteriaData {
     checklist: string;
-    items: string[];
+    items: ChecklistItem[];
 }
 
 export interface MatchingData {
@@ -90,7 +96,7 @@ export interface RegisteredTpo {
     tpo: TpoData;
     criteria: CriteriaData;
     matching: MatchingData;
-    setupTasks?: string[][];
+    setupTasks?: ChecklistItem[][];
 }
 
 export interface TeamInfo {

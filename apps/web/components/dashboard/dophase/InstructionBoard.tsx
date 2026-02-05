@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { usePDCA } from '../../../context/PDCAContext';
 import { colors, selectStyle } from '../../../styles/theme';
+import { ChecklistItem } from '@csmac/types';
 import { ChecklistRegistrationModal } from './ChecklistRegistrationModal';
 
 interface InstructionBoardProps {
@@ -14,6 +15,7 @@ interface InstructionBoardProps {
     showReverseTooltip: boolean;
     setShowReverseTooltip: (show: boolean) => void;
     setTpoModalOpen: (open: boolean) => void;
+    setNewTpo: (tpo: { time: string; place: string; occasion: string }) => void;
 }
 
 export const InstructionBoard: React.FC<InstructionBoardProps> = ({
@@ -26,7 +28,8 @@ export const InstructionBoard: React.FC<InstructionBoardProps> = ({
     setShouldRegisterAsStandard,
     showReverseTooltip,
     setShowReverseTooltip,
-    setTpoModalOpen
+    setTpoModalOpen,
+    setNewTpo
 }) => {
     const {
         workplace, setWorkplace,
@@ -168,7 +171,12 @@ export const InstructionBoard: React.FC<InstructionBoardProps> = ({
                                         onClick={() => {
                                             setSelectedInspectionSopId(t.id);
                                             setInstructionSubject(t.criteria.checklist);
-                                            setInstructionDescription(''); // Clear desc for fresh input
+                                            // Sync TPO state
+                                            setNewTpo(t.tpo);
+                                            // Only clear description if it was empty or from a different SOP to avoid losing work
+                                            if (!instructionDescription || selectedInspectionSopId !== t.id) {
+                                                setInstructionDescription('');
+                                            }
                                         }}
                                         style={{
                                             padding: '10px',
@@ -185,14 +193,16 @@ export const InstructionBoard: React.FC<InstructionBoardProps> = ({
                                     </div>
                                     {/* Sub-menu for the configured tasks */}
                                     {t.setupTasks && t.setupTasks.length > 0 && t.setupTasks.map((taskSet, tsIdx) => {
-                                        const combinedTask = taskSet.join(', ');
+                                        const combinedTask = taskSet.map(item => item.content).join(', ');
                                         return (
                                             <div
-                                                key={`setup-config-${tsIdx}`}
+                                                key={`${t.id}-setup-${tsIdx}`}
                                                 onClick={() => {
                                                     setInstructionSubject(`[${t.tpo.place}] ${combinedTask}`);
                                                     setInstructionDescription(`${t.tpo.occasion}: ${combinedTask}\n업무 가이드라인에 따라 업무를 수행해 주세요.`);
                                                     setSelectedInspectionSopId(t.id);
+                                                    // Sync TPO state for sub-items too
+                                                    setNewTpo(t.tpo);
                                                 }}
                                                 style={{
                                                     padding: '6px 10px 6px 20px',
@@ -228,6 +238,26 @@ export const InstructionBoard: React.FC<InstructionBoardProps> = ({
                     <div style={{ fontWeight: 'bold', fontSize: '1.2rem', marginBottom: '20px', borderBottom: `2px solid ${colors.border}`, paddingBottom: '10px' }}>업무지시 (Job Order)</div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                        {/* SITE / TEAM / JOB CONTEXT & TPO PREVIEW */}
+                        <div style={{ backgroundColor: '#F8F9FA', padding: '15px', borderRadius: '10px', display: 'flex', flexDirection: 'column', gap: '10px', border: `1px solid ${colors.border}` }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div style={{ fontSize: '0.8rem', color: colors.textGray }}>사업장/팀/직무</div>
+                                <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: colors.primaryBlue }}>
+                                    {workplace} · {teams[team]?.label} · {job}
+                                </div>
+                            </div>
+                            <div style={{ padding: '8px 0', borderTop: '1px solid #EEE' }}>
+                                <div style={{ fontSize: '0.8rem', color: colors.textGray, marginBottom: '4px' }}>TPO 설정 현황</div>
+                                <div style={{ fontWeight: 'bold', fontSize: '0.95rem', color: colors.textDark }}>
+                                    {selectedInspectionSopId ? (
+                                        <span style={{ color: colors.primaryBlue }}>[{registeredTpos.find(t => t.id === selectedInspectionSopId)?.tpo.time}] {registeredTpos.find(t => t.id === selectedInspectionSopId)?.tpo.place} · {registeredTpos.find(t => t.id === selectedInspectionSopId)?.tpo.occasion}</span>
+                                    ) : (
+                                        <span style={{ color: colors.textGray, fontWeight: 'normal' }}>업무 리스트에서 항목을 선택해주세요.</span>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
                         <div>
                             <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 'bold', marginBottom: '5px', color: colors.textDark }}>담당자 (Assignee)</label>
                             <select style={{ width: '100%', padding: '10px', borderRadius: '8px', border: `1px solid ${colors.textDark}`, fontSize: '0.95rem' }}>
@@ -313,9 +343,10 @@ export const InstructionBoard: React.FC<InstructionBoardProps> = ({
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '10px' }}>
                             <button
-                                onClick={() => {
+                                onClick={(e) => {
+                                    e.preventDefault();
                                     if (!instructionDescription) {
-                                        alert('지시 상세 내용을 입력해주세요.');
+                                        setTimeout(() => alert('지시 상세 내용을 입력해주세요.'), 0);
                                         return;
                                     }
                                     if (shouldRegisterAsStandard) {
@@ -324,13 +355,14 @@ export const InstructionBoard: React.FC<InstructionBoardProps> = ({
                                     } else {
                                         // If not registering, need checklist item selected first
                                         if (!instructionSubject) {
-                                            alert('체크리스트 항목을 먼저 선택해주세요.');
+                                            setTimeout(() => alert('체크리스트 항목을 먼저 선택해주세요.'), 0);
                                             return;
                                         }
                                         // Go straight to Job Card Preview
                                         setInstructionModalOpen(true);
                                     }
                                 }}
+                                type="button"
                                 style={{
                                     padding: '12px 30px',
                                     backgroundColor: colors.primaryBlue,
@@ -355,16 +387,20 @@ export const InstructionBoard: React.FC<InstructionBoardProps> = ({
                 <ChecklistRegistrationModal
                     setModalOpen={setChecklistRegModalOpen}
                     onRegister={(data) => {
+                        // Update TPO state for JobCardModal display
+                        setNewTpo(data.tpo);
+
                         // Register the checklist item with TPO and subdivisions
                         setupTasksToSop(null, data.subdivisions, true, {
                             category: data.checklistItem,
                             tpo: data.tpo
                         });
                         alert('업무수행점검 리스트에 등록되었습니다.');
-                        
+
                         // Also create job card
                         setInstructionSubject(data.checklistItem);
-                        setInstructionDescription(data.subdivisions.join('\n') + '\n업무 가이드라인에 따라 업무를 수행해 주세요.');
+                        const subdivisionsText = data.subdivisions.map(s => s.content).join('\n');
+                        setInstructionDescription(subdivisionsText + '\n업무 가이드라인에 따라 업무를 수행해 주세요.');
                         setInstructionModalOpen(true);
                     }}
                 />

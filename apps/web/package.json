@@ -9,16 +9,17 @@
         "lint": "next lint"
     },
     "dependencies": {
+        "@csmac/types": "workspace:*",
+        "@csmac/ui": "workspace:*",
+        "@supabase/supabase-js": "^2.94.0",
         "next": "14.1.0",
         "react": "^18.2.0",
-        "react-dom": "^18.2.0",
-        "@csmac/ui": "workspace:*",
-        "@csmac/types": "workspace:*"
+        "react-dom": "^18.2.0"
     },
     "devDependencies": {
+        "@csmac/config": "workspace:*",
         "@types/react": "^18.2.0",
         "@types/react-dom": "^18.2.0",
-        "@csmac/config": "workspace:*",
         "typescript": "^5.3.3"
     }
 }

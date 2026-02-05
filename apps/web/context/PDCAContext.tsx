@@ -1,10 +1,11 @@
-'use client';
 
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import { supabase } from '../utils/supabaseClient';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import {
     RegisteredTpo,
     Phase,
     TpoData,
+    ChecklistItem,
     CriteriaData,
     MatchingData,
     TeamsMapping,
@@ -65,7 +66,7 @@ interface PDCAContextType {
     // Job Instructions (Slide 8)
     jobInstructions: JobInstruction[];
     addJobInstruction: (instruction: Omit<JobInstruction, 'id'>) => void;
-    setupTasksToSop: (sopId: number | null, tasks: string[], isManual?: boolean, newSopInfo?: { category: string, tpo: TpoData }) => void;
+    setupTasksToSop: (sopId: number | null, tasks: ChecklistItem[], isManual?: boolean, newSopInfo?: { category: string, tpo: TpoData }) => void;
 
     // Options
     tpoOptions: { time: string[], place: string[], occasion: string[] };
@@ -78,6 +79,9 @@ interface PDCAContextType {
     handleTpoSelect: (category: 'time' | 'place' | 'occasion', value: string) => void;
     handleCriteriaSelect: (type: 'checklist' | 'criteriaItems', value: string) => void;
     handleMatchingSelect: (type: 'evidence' | 'method' | 'elements', value: string) => void;
+    addChecklistItem: (item: string) => void;
+    removeChecklistItem: (index: number) => void;
+    updateChecklistItemImage: (index: number, file: File | null, url?: string) => void;
 
     // Config/Options
     teams: TeamsMapping;
@@ -116,68 +120,65 @@ export function PDCAProvider({ children }: { children: ReactNode }) {
     const [selectedMatching, setSelectedMatching] = useState<MatchingData>({ evidence: '', method: '', elements: [] });
     const [searchQuery, setSearchQuery] = useState('');
 
-    const [registeredTpos, setRegisteredTpos] = useState<RegisteredTpo[]>([
-        {
-            id: 1, workplace: '소노벨 천안', team: 'housekeeping', job: '인스펙터',
-            tpo: { time: '업무중', place: '객실', occasion: '인스펙션 실행' },
-            criteria: { checklist: '객실 상태가 표준 정비 지침을 준수하는가?', items: ['침구류 오염 및 주름 상태 확인', '실내 온도 및 조명 작동 여부', '욕실 물기 제거 및 배수 상태'] },
-            matching: { evidence: '육안', method: '지정' }
-        },
-        {
-            id: 2, workplace: '소노벨 천안', team: 'housekeeping', job: '룸메이드',
-            tpo: { time: '업무중', place: '객실', occasion: '객실 정비/세팅' },
-            criteria: { checklist: '객실 정비 프로세스가 매뉴얼대로 수행되었는가?', items: ['침대 베딩 텐션 유지', '어메니티(에비앙 등) 재입고'] },
-            matching: { evidence: '육안', method: '지정' }
-        },
-        {
-            id: 3, workplace: '소노벨 천안', team: 'housekeeping', job: '코디사원',
-            tpo: { time: '업무전', place: '창고/린넨실', occasion: '물품 전달/불출' },
-            criteria: { checklist: '린넨 및 비품 재고 관리가 정확하게 이루어지는가?', items: ['린넨 청결도 및 오염 분류', '운반 카트 바퀴 소음/작동 점검'] },
-            matching: { evidence: '육안', method: '지정' }
-        },
-        {
-            id: 4, workplace: '소노벨 천안', team: 'front', job: '지배인',
-            tpo: { time: '업무전', place: '기계실/상황실', occasion: '영업 준비/마감' },
-            criteria: { checklist: '설비 시스템 교대 및 마감 점검이 완료되었는가?', items: ['인수인계 일지 기록 상태', '비상 발전기 대기 모드 확인'] },
-            matching: { evidence: '육안', method: '지정' }
-        },
-        {
-            id: 5, workplace: '소노벨 천안', team: 'front', job: '리셉션',
-            tpo: { time: '업무중', place: '로비', occasion: '고객 환대/응대' },
-            criteria: { checklist: '고객 맞이 및 대기 관리가 적절히 이루어지는가?', items: ['맞이 인사(Greeting) 수행 여부', '대기 번호표 발행 및 안내'] },
-            matching: { evidence: 'AI', method: '지정' }
-        },
-        {
-            id: 6, workplace: '소노벨 천안', team: 'front', job: '컨시어즈',
-            tpo: { time: '업무중', place: '로비', occasion: '고객 환대/응대' },
-            criteria: { checklist: '고객 맞이 및 대기 관리가 적절히 이루어지는가?', items: ['짐 운반 지원 필요성 확인', '용모 복장 및 명찰 착용 상태'] },
-            matching: { evidence: 'AI', method: '지정' }
-        },
-        {
-            id: 7, workplace: '소노벨 천안', team: 'facility', job: '엔지니어',
-            tpo: { time: '업무중', place: '로비', occasion: '시설/안전 점검' },
-            criteria: { checklist: '로비 내 시설이 안전하고 쾌적하게 유지되는가?', items: ['자동문 작동 및 센서 감지 상태', '비상 대피도 비치 및 시인성 확인'] },
-            matching: { evidence: '육안', method: '지정' }
-        },
-        {
-            id: 8, workplace: '소노벨 천안', team: 'management', job: '상황실 관리자',
-            tpo: { time: '업무후', place: '기계실/상황실', occasion: '시설/안전 점검' },
-            criteria: { checklist: '핵심 설비 및 시스템이 정상 작동 중인가?', items: ['화재 수신기 정상 작동 확인', 'CCTV 모니터링 사각지대 여부'] },
-            matching: { evidence: '육안', method: '지정' }
-        },
-        {
-            id: 9, workplace: '소노벨 천안', team: 'front', job: '리셉션',
-            tpo: { time: '업무중', place: '로비', occasion: '컴플레인/VOC 처리' },
-            criteria: { checklist: '로비에서의 고객 불편 사항이 신속하게 해결되었는가?', items: ['대기 시간 지연에 대한 안내 및 양해', '사후 피드백을 위한 연락처 확인'] },
-            matching: { evidence: 'AI', method: '지정' }
-        },
-        {
-            id: 10, workplace: '소노벨 천안', team: 'facility', job: '엔지니어',
-            tpo: { time: '업무전', place: '주차장', occasion: '시설/안전 점검' },
-            criteria: { checklist: '주차장 내 안전 위해 요소가 제거 되었는가?', items: ['포트홀 및 바닥 균열 유무', '조명 조도 및 작동 상태'] },
-            matching: { evidence: 'AI', method: '지정' }
-        }
-    ]);
+    const [registeredTpos, setRegisteredTpos] = useState<RegisteredTpo[]>([]);
+
+    // Fetch initial data from Supabase
+    useEffect(() => {
+        const fetchTpos = async () => {
+            try {
+                // Simple query with new schema
+                const { data, error } = await supabase
+                    .from('tpo')
+                    .select(`
+                        id,
+                        workplace, team, job,
+                        tpo_time, tpo_place, tpo_occasion,
+                        matching_evidence, matching_method, matching_elements,
+                        checklist_items ( * )
+                    `)
+                    .order('created_at', { ascending: false });
+
+                if (error) {
+                    console.error('Error fetching TPOs:', error);
+                    return;
+                }
+
+                if (data) {
+                    // Transform DB shape to frontend RegisteredTpo shape
+                    const transformed: RegisteredTpo[] = data.map((row: any) => ({
+                        id: row.id,
+                        workplace: row.workplace,
+                        team: row.team,
+                        job: row.job,
+                        tpo: {
+                            time: row.tpo_time,
+                            place: row.tpo_place,
+                            occasion: row.tpo_occasion
+                        },
+                        criteria: {
+                            checklist: '', // Not used anymore
+                            items: row.checklist_items?.map((i: any) => ({
+                                content: i.content,
+                                imageUrl: i.reference_image_url || i.image_url || undefined,
+                                ...i
+                            })) || []
+                        },
+                        matching: {
+                            evidence: row.matching_evidence || '',
+                            method: row.matching_method || '',
+                            elements: row.matching_elements || [] // Already an array in PostgreSQL
+                        },
+                        setupTasks: [] // Will be populated in Do phase
+                    }));
+                    setRegisteredTpos(transformed);
+                }
+            } catch (err) {
+                console.error('Unexpected error fetching TPOs:', err);
+            }
+        };
+
+        fetchTpos();
+    }, []);
     const [isEditing, setIsEditing] = useState<number | null>(null);
     const [showTpoTooltip, setShowTpoTooltip] = useState(false);
     const [activeDoSubPhase, setActiveDoSubPhase] = useState('checklist');
@@ -232,31 +233,173 @@ export function PDCAProvider({ children }: { children: ReactNode }) {
         setActionPlanItems(prev => prev.map(item => item.id === id ? { ...item, ...updates } : item));
     };
 
-    const handleRegister = () => {
-        if (!selectedTpo.place || !selectedTpo.occasion || !selectedCriteria.checklist) {
-            alert('TPO(장소/상황)와 점검 기준을 모두 선택해 주세요.');
+    // Upload image to Supabase Storage and return public URL
+    const uploadChecklistImage = async (file: File, tpoId: number, itemIndex: number): Promise<string | null> => {
+        try {
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${tpoId}_${itemIndex}_${Date.now()}.${fileExt}`;
+            const filePath = `${fileName}`;
+
+            const { data, error } = await supabase.storage
+                .from('checklist-reference-images')
+                .upload(filePath, file, {
+                    cacheControl: '3600',
+                    upsert: false
+                });
+
+            if (error) throw error;
+
+            // Get public URL
+            const { data: urlData } = supabase.storage
+                .from('checklist-reference-images')
+                .getPublicUrl(filePath);
+
+            return urlData.publicUrl;
+        } catch (err) {
+            console.error('Error uploading image:', err);
+            return null;
+        }
+    };
+
+    const handleRegister = async () => {
+        if (!selectedTpo.place || !selectedTpo.occasion) {
+            setTimeout(() => alert('TPO(장소/상황)를 모두 선택해 주세요.'), 0);
             return;
         }
 
-        if (isEditing !== null) {
-            setRegisteredTpos(prev => prev.map(item =>
-                item.id === isEditing
-                    ? { ...item, workplace, team, job, tpo: { ...selectedTpo }, criteria: { ...selectedCriteria }, matching: { ...selectedMatching } }
-                    : item
-            ));
-            setIsEditing(null);
-        } else {
-            const newEntry: RegisteredTpo = {
-                id: Date.now(),
-                workplace,
-                team,
-                job,
-                tpo: { ...selectedTpo },
-                criteria: { ...selectedCriteria },
-                matching: { ...selectedMatching }
-            };
-            setRegisteredTpos(prev => [...prev, newEntry]);
-            alert(`${job} 직무의 TPO 상황이 등록되었습니다.`);
+        if (selectedCriteria.items.length === 0) {
+            setTimeout(() => alert('체크리스트 항목을 최소 1개 이상 추가해 주세요.'), 0);
+            return;
+        }
+
+        try {
+            if (isEditing !== null) {
+                // UPDATE Logic
+                await supabase.from('tpo').update({
+                    workplace,
+                    team,
+                    job,
+                    tpo_time: selectedTpo.time,
+                    tpo_place: selectedTpo.place,
+                    tpo_occasion: selectedTpo.occasion,
+                    matching_evidence: selectedMatching.evidence,
+                    matching_method: selectedMatching.method,
+                    matching_elements: selectedMatching.elements || []
+                }).eq('id', isEditing);
+
+                // Replace checklist items
+                await supabase.from('checklist_items').delete().eq('tpo_id', isEditing);
+
+                // Upload images and prepare items
+                const itemsToInsert = await Promise.all(
+                    selectedCriteria.items.map(async (item, idx) => {
+                        let imageUrl = item.imageUrl;
+
+                        // Upload new image if imageFile exists
+                        if (item.imageFile) {
+                            const uploadedUrl = await uploadChecklistImage(item.imageFile, isEditing, idx);
+                            if (uploadedUrl) imageUrl = uploadedUrl;
+                        }
+
+                        return {
+                            tpo_id: isEditing,
+                            content: item.content,
+                            sequence_order: idx,
+                            reference_image_url: imageUrl || null
+                        };
+                    })
+                );
+
+                await supabase.from('checklist_items').insert(itemsToInsert);
+
+                setIsEditing(null);
+                setTimeout(() => alert('수정이 완료되었습니다.'), 0);
+            } else {
+                // INSERT Logic
+                const { data: newTpo, error: tpoError } = await supabase.from('tpo').insert({
+                    workplace,
+                    team,
+                    job,
+                    tpo_time: selectedTpo.time,
+                    tpo_place: selectedTpo.place,
+                    tpo_occasion: selectedTpo.occasion,
+                    matching_evidence: selectedMatching.evidence,
+                    matching_method: selectedMatching.method,
+                    matching_elements: selectedMatching.elements || []
+                }).select().single();
+
+                if (tpoError) throw tpoError;
+
+                // Upload images and insert checklist items
+                const itemsPayload = await Promise.all(
+                    selectedCriteria.items.map(async (item, idx) => {
+                        let imageUrl = item.imageUrl;
+
+                        // Upload image if exists
+                        if (item.imageFile) {
+                            const uploadedUrl = await uploadChecklistImage(item.imageFile, newTpo.id, idx);
+                            if (uploadedUrl) imageUrl = uploadedUrl;
+                        }
+
+                        return {
+                            tpo_id: newTpo.id,
+                            content: item.content,
+                            sequence_order: idx,
+                            reference_image_url: imageUrl || null
+                        };
+                    })
+                );
+
+                const { error: itemError } = await supabase.from('checklist_items').insert(itemsPayload);
+                if (itemError) throw itemError;
+
+                setTimeout(() => alert(`${job} 직무의 TPO가 등록되었습니다.`), 0);
+            }
+
+            // Refresh data by refetching
+            const { data, error } = await supabase
+                .from('tpo')
+                .select(`
+                    id,
+                    workplace, team, job,
+                    tpo_time, tpo_place, tpo_occasion,
+                matching_evidence, matching_method, matching_elements,
+                checklist_items ( * )
+                `)
+                .order('created_at', { ascending: false });
+
+            if (!error && data) {
+                const transformed: RegisteredTpo[] = data.map((row: any) => ({
+                    id: row.id,
+                    workplace: row.workplace,
+                    team: row.team,
+                    job: row.job,
+                    tpo: {
+                        time: row.tpo_time,
+                        place: row.tpo_place,
+                        occasion: row.tpo_occasion
+                    },
+                    criteria: {
+                        checklist: '',
+                        items: row.checklist_items?.map((i: any) => ({
+                            ...i,
+                            content: i.content,
+                            imageUrl: i.reference_image_url || i.image_url || undefined
+                        })) || []
+                    },
+                    matching: {
+                        evidence: row.matching_evidence || '',
+                        method: row.matching_method || '',
+                        elements: row.matching_elements || []
+                    },
+                    setupTasks: []
+                }));
+                setRegisteredTpos(transformed);
+            }
+
+        } catch (err) {
+            console.error('Error registering TPO:', err);
+            setTimeout(() => alert('저장 중 오류가 발생했습니다.'), 0);
         }
         handleReset();
     };
@@ -268,9 +411,21 @@ export function PDCAProvider({ children }: { children: ReactNode }) {
         setIsEditing(null);
     };
 
-    const handleRemoveRegistered = (id: number) => {
-        setRegisteredTpos(prev => prev.filter(item => item.id !== id));
-        if (isEditing === id) setIsEditing(null);
+    const handleRemoveRegistered = async (id: number) => {
+        try {
+            // Delete from database (cascades to checklist_items)
+            const { error } = await supabase.from('tpo').delete().eq('id', id);
+            if (error) throw error;
+
+            // Remove from local state
+            setRegisteredTpos(prev => prev.filter(item => item.id !== id));
+            if (isEditing === id) setIsEditing(null);
+
+            setTimeout(() => alert('삭제되었습니다.'), 0);
+        } catch (err) {
+            console.error('Error deleting TPO:', err);
+            setTimeout(() => alert('삭제 중 오류가 발생했습니다.'), 0);
+        }
     };
 
     const handleEdit = (id: number) => {
@@ -281,7 +436,11 @@ export function PDCAProvider({ children }: { children: ReactNode }) {
             setTeam(itemToEdit.team);
             setJob(itemToEdit.job);
             setSelectedTpo({ ...itemToEdit.tpo });
-            setSelectedCriteria({ ...itemToEdit.criteria });
+            // Deep copy to prevent mutating the original registered data
+            setSelectedCriteria({
+                checklist: itemToEdit.criteria.checklist,
+                items: itemToEdit.criteria.items.map(item => ({ ...item }))
+            });
             setSelectedMatching({ ...itemToEdit.matching });
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
@@ -294,7 +453,11 @@ export function PDCAProvider({ children }: { children: ReactNode }) {
             // Automatically select criteria if a valid combination exists
             const key = `${newTpo.place}|${newTpo.occasion}`;
             if (criteriaOptions[key]) {
-                setSelectedCriteria(criteriaOptions[key]);
+                // Deep copy to prevent mutating the original constant
+                setSelectedCriteria({
+                    checklist: criteriaOptions[key].checklist,
+                    items: criteriaOptions[key].items.map(item => ({ ...item }))
+                });
             } else {
                 setSelectedCriteria({ checklist: '', items: [] });
             }
@@ -310,9 +473,10 @@ export function PDCAProvider({ children }: { children: ReactNode }) {
             setActiveDropdown(null);
         } else {
             setSelectedCriteria(prev => {
-                const newItems = prev.items.includes(value)
-                    ? prev.items.filter(i => i !== value)
-                    : [...prev.items, value];
+                const itemExists = prev.items.some(item => item.content === value);
+                const newItems = itemExists
+                    ? prev.items.filter(item => item.content !== value)
+                    : [...prev.items, { content: value }];
                 return { ...prev, items: newItems };
             });
         }
@@ -331,6 +495,31 @@ export function PDCAProvider({ children }: { children: ReactNode }) {
             setSelectedMatching(prev => ({ ...prev, [type]: value }));
             setActiveDropdown(null);
         }
+    };
+
+    const addChecklistItem = (item: string) => {
+        if (item.trim()) {
+            setSelectedCriteria(prev => ({
+                ...prev,
+                items: [...prev.items, { content: item.trim() }]
+            }));
+        }
+    };
+
+    const removeChecklistItem = (index: number) => {
+        setSelectedCriteria(prev => ({
+            ...prev,
+            items: prev.items.filter((_, i) => i !== index)
+        }));
+    };
+
+    const updateChecklistItemImage = (index: number, file: File | null, url?: string) => {
+        setSelectedCriteria(prev => ({
+            ...prev,
+            items: prev.items.map((item, i) =>
+                i === index ? { ...item, imageFile: file || undefined, imageUrl: url } : item
+            )
+        }));
     };
 
     const currentCriteria = criteriaOptions[`${selectedTpo.place}|${selectedTpo.occasion}`];
@@ -357,20 +546,20 @@ export function PDCAProvider({ children }: { children: ReactNode }) {
 
     const setupTasksToSop = (
         sopId: number | null,
-        tasks: string[],
+        tasks: ChecklistItem[],
         isManual?: boolean,
         newSopInfo?: { category: string, tpo: TpoData }
     ) => {
-        const finalTasks = isManual ? tasks.map(t => `[수동등록] ${t}`) : tasks;
+        const finalTasks = isManual ? tasks.map(item => ({ ...item, content: `[수동등록] ${item.content}` })) : tasks;
 
         if (sopId !== null) {
             // Update existing RegisteredTpo - Append new configuration if not duplicate
             setRegisteredTpos(prev => prev.map(t => {
                 if (t.id === sopId) {
                     const currentConfigs = t.setupTasks || [];
-                    // Check for duplicate set
+                    // Check for duplicate set - comparing content strings
                     const isDuplicate = currentConfigs.some(config =>
-                        JSON.stringify(config.sort()) === JSON.stringify([...finalTasks].sort())
+                        JSON.stringify(config.map(i => i.content).sort()) === JSON.stringify(finalTasks.map(i => i.content).sort())
                     );
 
                     if (isDuplicate) return t;
@@ -385,9 +574,9 @@ export function PDCAProvider({ children }: { children: ReactNode }) {
             const newId = Date.now();
             const newRegisteredTpo: RegisteredTpo = {
                 id: newId,
-                workplace,
-                team,
-                job,
+                workplace: workplace, // Use state values
+                team: team,
+                job: job,
                 tpo: newSopInfo.tpo,
                 criteria: { checklist: `[현장등록] ${newSopInfo.category}`, items: [] },
                 matching: { evidence: '사진', method: '정기점검', elements: ['청결도'] },
@@ -431,7 +620,8 @@ export function PDCAProvider({ children }: { children: ReactNode }) {
         searchQuery, setSearchQuery,
         isInspectionModalOpen, setInspectionModalOpen,
         selectedInspectionSopId, setSelectedInspectionSopId,
-        jobInstructions, addJobInstruction, setupTasksToSop
+        jobInstructions, addJobInstruction, setupTasksToSop,
+        addChecklistItem, removeChecklistItem, updateChecklistItemImage
     };
 
     return <PDCAContext.Provider value={value}>{children}</PDCAContext.Provider>;

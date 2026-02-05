@@ -79,6 +79,7 @@ const DoPhaseContent = () => {
                     showReverseTooltip={showReverseTooltip}
                     setShowReverseTooltip={setShowReverseTooltip}
                     setTpoModalOpen={setTpoModalOpen}
+                    setNewTpo={setNewTpo}
                 />
             )}
 
@@ -90,6 +91,10 @@ const DoPhaseContent = () => {
                     setCollapsedSops={setCollapsedSops}
                     setInspectionModalOpen={setInspectionModalOpen}
                     setSelectedInspectionSopId={setSelectedInspectionSopId}
+                    setInstructionSubject={setInstructionSubject}
+                    setInstructionDescription={setInstructionDescription}
+                    setNewTpo={setNewTpo}
+                    setActiveDoSubPhase={setActiveDoSubPhase}
                 />
             )}
 
@@ -133,6 +138,10 @@ const DoPhaseContent = () => {
             {isInspectionModalOpen && (
                 <InspectionModal
                     setInspectionModalOpen={setInspectionModalOpen}
+                    setInstructionSubject={setInstructionSubject}
+                    setInstructionDescription={setInstructionDescription}
+                    setNewTpo={setNewTpo}
+                    setActiveDoSubPhase={setActiveDoSubPhase}
                 />
             )}
         </div>

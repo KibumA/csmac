@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { usePDCA } from '../../../context/PDCAContext';
 import { colors, selectStyle } from '../../../styles/theme';
+import { ChecklistItem } from '@csmac/types';
 
 interface ChecklistRegistrationModalProps {
     setModalOpen: (open: boolean) => void;
     onRegister: (data: {
         checklistItem: string;
         tpo: { time: string; place: string; occasion: string };
-        subdivisions: string[];
+        subdivisions: ChecklistItem[];
     }) => void;
     initialChecklistItem?: string;
 }
@@ -46,18 +47,18 @@ export const ChecklistRegistrationModal: React.FC<ChecklistRegistrationModalProp
 
     const handleRegister = () => {
         if (!checklistItem || !tpo.place || !tpo.time || !tpo.occasion) {
-            alert('체크리스트 항목과 모든 TPO 항목을 입력해주세요.');
+            setTimeout(() => alert('체크리스트 항목과 모든 TPO 항목을 입력해주세요.'), 0);
             return;
         }
         if (selectedSubdivisions.length === 0) {
-            alert('세분화 항목을 1개 이상 선택해주세요.');
+            setTimeout(() => alert('세분화 항목을 1개 이상 선택해주세요.'), 0);
             return;
         }
 
         onRegister({
             checklistItem,
             tpo,
-            subdivisions: selectedSubdivisions
+            subdivisions: selectedSubdivisions.map(s => ({ content: s }))
         });
 
         setModalOpen(false);

@@ -33,9 +33,10 @@ export default function PlanPhaseContent() {
         showTpoTooltip, setShowTpoTooltip,
         currentCriteria,
         searchQuery, setSearchQuery,
-        placeOccasionMapping
+        placeOccasionMapping,
+        addChecklistItem, removeChecklistItem, updateChecklistItemImage
     } = usePDCA();
-    const [showStandardImageTooltip, setShowStandardImageTooltip] = React.useState(false);
+    const [newItemInput, setNewItemInput] = React.useState('');
 
     return (
         <>
@@ -207,7 +208,7 @@ export default function PlanPhaseContent() {
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '15px' }}>
                                 <span style={{ fontSize: '1.2rem' }}>✅</span>
                                 <span style={{ fontWeight: 'bold', fontSize: '1rem' }}>체크리스트</span>
-                                <span style={{ fontSize: '0.7rem', color: colors.textGray, marginLeft: 'auto' }}>필수 항목</span>
+                                <span style={{ fontSize: '0.7rem', color: colors.textGray, marginLeft: 'auto' }}>항목 추가 가능</span>
                             </div>
 
                             <div style={{ border: `1px solid ${colors.border}`, borderRadius: '8px', overflow: 'hidden' }}>
@@ -215,221 +216,238 @@ export default function PlanPhaseContent() {
                                 <div style={{ display: 'flex', alignItems: 'center', padding: '8px 12px', borderBottom: `1px solid ${colors.border}` }}>
                                     <input
                                         type="text"
-                                        placeholder="항목 입력"
+                                        placeholder="항목 입력 후 + 클릭"
+                                        value={newItemInput}
+                                        onChange={(e) => setNewItemInput(e.target.value)}
+                                        onKeyPress={(e) => {
+                                            if (e.key === 'Enter' && newItemInput.trim()) {
+                                                addChecklistItem(newItemInput);
+                                                setNewItemInput('');
+                                            }
+                                        }}
                                         style={{ flex: 1, border: 'none', outline: 'none', fontSize: '0.85rem' }}
                                     />
-                                    <button style={{
-                                        backgroundColor: colors.primaryBlue,
-                                        color: 'white',
-                                        border: 'none',
-                                        borderRadius: '4px',
-                                        width: '24px',
-                                        height: '24px',
-                                        cursor: 'pointer',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        fontSize: '1.1rem'
-                                    }}>+</button>
+                                    <button
+                                        onClick={() => {
+                                            if (newItemInput.trim()) {
+                                                addChecklistItem(newItemInput);
+                                                setNewItemInput('');
+                                            }
+                                        }}
+                                        style={{
+                                            backgroundColor: colors.primaryBlue,
+                                            color: 'white',
+                                            border: 'none',
+                                            borderRadius: '4px',
+                                            width: '24px',
+                                            height: '24px',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            fontSize: '1.1rem'
+                                        }}
+                                    >+</button>
                                 </div>
 
                                 {/* Checklist Items */}
-                                <div style={{ height: '130px', overflowY: 'auto', padding: '12px' }}>
-                                    {currentCriteria ? (
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                                            {currentCriteria.items.map((item, idx) => (
-                                                <div key={idx} style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                                                    <input type="checkbox" defaultChecked readOnly style={{ accentColor: colors.primaryBlue }} />
-                                                    <span style={{ fontSize: '0.85rem', color: colors.textDark }}>{item}</span>
+                                <div style={{ height: '200px', overflowY: 'auto', padding: '12px' }}>
+                                    {selectedCriteria.items.length > 0 ? (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                            {selectedCriteria.items.map((item, idx) => (
+                                                <div key={idx} style={{
+                                                    display: 'flex',
+                                                    gap: '8px',
+                                                    alignItems: 'flex-start',
+                                                    padding: '8px',
+                                                    backgroundColor: '#F8F9FA',
+                                                    borderRadius: '6px'
+                                                }}>
+                                                    <span style={{ fontSize: '0.85rem', color: colors.textDark, flex: 1, paddingTop: '4px' }}>
+                                                        {item.content}
+                                                    </span>
+
+                                                    {/* Image Upload & Preview */}
+                                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                                                        {item.imageUrl || item.imageFile ? (
+                                                            <div style={{ position: 'relative' }}>
+                                                                <img
+                                                                    src={item.imageFile ? URL.createObjectURL(item.imageFile) : item.imageUrl}
+                                                                    alt="Preview"
+                                                                    style={{
+                                                                        width: '50px',
+                                                                        height: '50px',
+                                                                        objectFit: 'cover',
+                                                                        borderRadius: '4px',
+                                                                        border: `1px solid ${colors.border}`
+                                                                    }}
+                                                                />
+                                                            </div>
+                                                        ) : null}
+                                                        <label style={{
+                                                            backgroundColor: colors.primaryBlue,
+                                                            color: 'white',
+                                                            padding: '4px 8px',
+                                                            borderRadius: '4px',
+                                                            cursor: 'pointer',
+                                                            fontSize: '0.7rem'
+                                                        }}>
+                                                            📷
+                                                            <input
+                                                                type="file"
+                                                                accept="image/*"
+                                                                style={{ display: 'none' }}
+                                                                onChange={(e) => {
+                                                                    const file = e.target.files?.[0];
+                                                                    if (file) {
+                                                                        updateChecklistItemImage(idx, file);
+                                                                    }
+                                                                }}
+                                                            />
+                                                        </label>
+                                                    </div>
+
+                                                    <button
+                                                        onClick={() => removeChecklistItem(idx)}
+                                                        style={{
+                                                            backgroundColor: '#FEE',
+                                                            color: '#D32F2F',
+                                                            border: 'none',
+                                                            borderRadius: '4px',
+                                                            width: '24px',
+                                                            height: '24px',
+                                                            cursor: 'pointer',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            fontSize: '0.9rem'
+                                                        }}
+                                                    >×</button>
                                                 </div>
                                             ))}
                                         </div>
                                     ) : (
-                                        <span style={{ fontSize: '0.8rem', color: colors.textGray }}>TPO를 선택하세요</span>
+                                        <span style={{ fontSize: '0.8rem', color: colors.textGray }}>체크리스트 항목을 추가하세요</span>
                                     )}
                                 </div>
                             </div>
                         </div>
 
-                        {/* 기준 이미지 Panel */}
-                        <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '12px', border: `1px solid ${colors.border}` }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '15px' }}>
-                                <span style={{ fontSize: '1.2rem' }}>🖼️</span>
-                                <span style={{ fontWeight: 'bold', fontSize: '1rem' }}>기준 이미지</span>
-
-                                {/* Tooltip Question Mark */}
-                                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                                    <div
-                                        onClick={() => setShowStandardImageTooltip(!showStandardImageTooltip)}
+                        {/* 업무요소 매칭 (Bottom of groupings) */}
+                        <div style={{ padding: '20px', backgroundColor: '#F8F9FA', borderRadius: '12px', border: `1px solid #E9ECEF` }}>
+                            <div style={{ fontWeight: 'bold', fontSize: '0.9rem', marginBottom: '15px', color: colors.textDark }}>업무요소 매칭</div>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '15px' }}>
+                                {[
+                                    { name: '정확성', id: 'accuracy', icon: '🎯' },
+                                    { name: '신속성', id: 'speed', icon: '⚡' },
+                                    { name: '충성도', id: 'loyalty', icon: '💎' },
+                                    { name: '업무공유', id: 'sharing', icon: '💬' }
+                                ].map((elem) => (
+                                    <button
+                                        key={elem.id}
+                                        type="button"
+                                        onClick={() => handleMatchingSelect('elements', elem.name)}
                                         style={{
-                                            width: '18px',
-                                            height: '18px',
-                                            backgroundColor: colors.primaryBlue,
-                                            color: 'white',
-                                            borderRadius: '50%',
                                             display: 'flex',
                                             alignItems: 'center',
-                                            justifyContent: 'center',
-                                            fontSize: '0.75rem',
+                                            gap: '10px',
+                                            padding: '12px',
+                                            backgroundColor: selectedMatching.elements?.includes(elem.name) ? colors.primaryBlue : 'white',
+                                            color: selectedMatching.elements?.includes(elem.name) ? 'white' : colors.textDark,
+                                            border: `1px solid ${selectedMatching.elements?.includes(elem.name) ? colors.primaryBlue : colors.border}`,
+                                            borderRadius: '8px',
                                             cursor: 'pointer',
-                                            fontWeight: 'bold',
-                                            boxShadow: '0 2px 4px rgba(33, 150, 243, 0.3)',
-                                            marginLeft: '4px'
+                                            transition: 'all 0.2s'
                                         }}
                                     >
-                                        ?
-                                    </div>
-                                    {showStandardImageTooltip && (
-                                        <div style={{
-                                            position: 'absolute',
-                                            bottom: '30px',
-                                            left: '50%',
-                                            transform: 'translateX(-50%)',
-                                            backgroundColor: '#333',
-                                            color: 'white',
-                                            padding: '12px',
-                                            borderRadius: '8px',
-                                            fontSize: '0.8rem',
-                                            width: '320px',
-                                            zIndex: 100,
-                                            boxShadow: '0 10px 25px rgba(0,0,0,0.2)',
-                                            lineHeight: '1.4',
-                                            textAlign: 'left'
-                                        }}>
-                                            체크리스트에 있는 항목에 대응하는 이미지/사진을 등록할 때, 하나의 이미지가 하나의 체크리스트 항목에 1:1로 대응해야 함. 그런데 그걸 어떻게 연결시킬것인가? 이미지 업로드 순번을 체크리스트의 항목 순번에 따라서 연결? 다른 방법 있나?
-                                            <div style={{
-                                                position: 'absolute',
-                                                bottom: '-6px',
-                                                left: '50%',
-                                                marginLeft: '-6px',
-                                                width: 0,
-                                                height: 0,
-                                                borderLeft: '6px solid transparent',
-                                                borderRight: '6px solid transparent',
-                                                borderTop: '6px solid #333'
-                                            }} />
-                                        </div>
-                                    )}
-                                </div>
-
-                                <span style={{ fontSize: '0.7rem', color: colors.textGray, marginLeft: 'auto' }}>최대 5장</span>
-                            </div>
-                            <div style={{
-                                height: '180px',
-                                border: `2px dashed ${colors.border}`,
-                                borderRadius: '12px',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                backgroundColor: '#F8F9FA',
-                                cursor: 'pointer'
-                            }}>
-                                <span style={{ fontSize: '2rem', color: colors.border }}>☁️</span>
-                                <div style={{ fontSize: '0.9rem', fontWeight: 'bold', color: colors.textDark, marginTop: '10px' }}>이미지 업로드</div>
-                                <div style={{ fontSize: '0.7rem', color: colors.textGray }}>드래그 앤 드롭</div>
+                                        <span style={{ fontSize: '1.2rem' }}>{elem.icon}</span>
+                                        <span style={{ fontWeight: 'bold', fontSize: '0.85rem' }}>{elem.name}</span>
+                                    </button>
+                                ))}
                             </div>
                         </div>
                     </div>
+                </div>
 
-                    {/* 업무요소 매칭 (Bottom of groupings) */}
-                    <div style={{ padding: '20px', backgroundColor: '#F8F9FA', borderRadius: '12px', border: `1px solid #E9ECEF` }}>
-                        <div style={{ fontWeight: 'bold', fontSize: '0.9rem', marginBottom: '15px', color: colors.textDark }}>업무요소 매칭</div>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '15px' }}>
-                            {[
-                                { name: '정확성', id: 'accuracy', icon: '🎯' },
-                                { name: '신속성', id: 'speed', icon: '⚡' },
-                                { name: '충성도', id: 'loyalty', icon: '💎' },
-                                { name: '업무공유', id: 'sharing', icon: '💬' }
-                            ].map((elem) => (
-                                <button
-                                    key={elem.id}
-                                    type="button"
-                                    onClick={() => handleMatchingSelect('elements', elem.name)}
-                                    style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '10px',
-                                        padding: '12px',
-                                        backgroundColor: selectedMatching.elements?.includes(elem.name) ? colors.primaryBlue : 'white',
-                                        color: selectedMatching.elements?.includes(elem.name) ? 'white' : colors.textDark,
-                                        border: `1px solid ${selectedMatching.elements?.includes(elem.name) ? colors.primaryBlue : colors.border}`,
-                                        borderRadius: '8px',
-                                        cursor: 'pointer',
-                                        transition: 'all 0.2s'
-                                    }}
-                                >
-                                    <span style={{ fontSize: '1.2rem' }}>{elem.icon}</span>
-                                    <span style={{ fontWeight: 'bold', fontSize: '0.85rem' }}>{elem.name}</span>
-                                </button>
-                            ))}
-                        </div>
+                {/* Action Buttons */}
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '20px', gap: '10px' }}>
+                    <button
+                        type="button"
+                        onClick={handleRegister}
+                        style={{ ...actionButtonStyle, backgroundColor: colors.primaryBlue, color: 'white' }}
+                    >
+                        {isEditing !== null ? '수정 완료' : '등록하기'}
+                    </button>
+                </div>
+
+                {/* --- REGISTERED LIST SECTION --- */}
+                <div style={{ marginTop: '40px' }}>
+                    <div style={{ marginBottom: '15px' }}>
+                        <h2 style={{ fontSize: '1.1rem', fontWeight: 'bold', color: colors.textDark }}>TPO 등록 리스트</h2>
                     </div>
-                </div>
-            </div>
 
-            {/* Action Buttons */}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '20px', gap: '10px' }}>
-                <button
-                    type="button"
-                    onClick={handleRegister}
-                    style={{ ...actionButtonStyle, backgroundColor: colors.primaryBlue, color: 'white' }}
-                >
-                    {isEditing !== null ? '수정 완료' : '등록하기'}
-                </button>
-            </div>
+                    <div style={{ overflowX: 'auto' }}>
 
-            {/* --- REGISTERED LIST SECTION --- */}
-            <div style={{ marginTop: '40px' }}>
-                <div style={{ marginBottom: '15px' }}>
-                    <h2 style={{ fontSize: '1.1rem', fontWeight: 'bold', color: colors.textDark }}>TPO 등록 리스트</h2>
-                </div>
-
-                <div style={{ overflowX: 'auto' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', border: `1px solid ${colors.border}`, minWidth: '940px' }}>
-                        <thead>
-                            <tr style={{ backgroundColor: '#CFD9EA' }}>
-                                <th style={{ ...thStyle, width: '100px' }}>관리</th>
-                                <th style={thStyle}>사업장 / 팀</th>
-                                <th style={thStyle}>직무 / 업무</th>
-                                <th style={{ ...thStyle, width: '200px' }}>TPO 상황 설정</th>
-                                <th style={thStyle}>체크리스트</th>
-                                <th style={thStyle}>업무요소</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {registeredTpos.length > 0 ? (
-                                registeredTpos.map((item) => (
-                                    <tr key={item.id} style={{ backgroundColor: isEditing === item.id ? colors.lightBlue : 'transparent' }}>
-                                        <td style={{ ...tdStyle, textAlign: 'center' }}>
-                                            <div style={{ display: 'flex', gap: '5px', justifyContent: 'center' }}>
-                                                <button onClick={() => handleEdit(item.id)} style={{ fontSize: '0.75rem', color: colors.primaryBlue, cursor: 'pointer' }}>수정</button>
-                                                <button onClick={() => handleRemoveRegistered(item.id)} style={{ fontSize: '0.75rem', color: '#D32F2F', cursor: 'pointer' }}>삭제</button>
-                                            </div>
-                                        </td>
-                                        <td style={tdStyle}>
-                                            <div style={{ fontWeight: 'bold' }}>{item.workplace}</div>
-                                            <div style={{ fontSize: '0.85rem' }}>{teams[item.team]?.label || item.team}</div>
-                                        </td>
-                                        <td style={tdStyle}>{item.job}</td>
-                                        <td style={tdStyle}>
-                                            <div style={tpoTag}>{item.tpo.time} | {item.tpo.place} | {item.tpo.occasion}</div>
-                                        </td>
-                                        <td style={tdStyle}>{item.criteria.checklist}</td>
-                                        <td style={tdStyle}>
-                                            <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                                                {item.matching.elements?.map(e => <span key={e} style={itemTag}>{e}</span>)}
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))
-                            ) : (
-                                <tr>
-                                    <td colSpan={6} style={{ ...tdStyle, textAlign: 'center', padding: '40px' }}>등록된 항목이 없습니다.</td>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', border: `1px solid ${colors.border}`, minWidth: '940px' }}>
+                            <thead>
+                                <tr style={{ backgroundColor: '#CFD9EA' }}>
+                                    <th style={{ ...thStyle, width: '100px' }}>관리</th>
+                                    <th style={thStyle}>사업장 / 팀</th>
+                                    <th style={thStyle}>직무 / 업무</th>
+                                    <th style={{ ...thStyle, width: '200px' }}>TPO 상황 설정</th>
+                                    <th style={thStyle}>체크리스트</th>
+                                    <th style={thStyle}>업무요소</th>
                                 </tr>
-                            )}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                {registeredTpos.length > 0 ? (
+                                    registeredTpos.map((item) => (
+                                        <tr key={item.id} style={{ backgroundColor: isEditing === item.id ? colors.lightBlue : 'transparent' }}>
+                                            <td style={{ ...tdStyle, textAlign: 'center' }}>
+                                                <div style={{ display: 'flex', gap: '5px', justifyContent: 'center' }}>
+                                                    <button onClick={() => handleEdit(item.id)} style={{ fontSize: '0.75rem', color: colors.primaryBlue, cursor: 'pointer' }}>수정</button>
+                                                    <button onClick={() => handleRemoveRegistered(item.id)} style={{ fontSize: '0.75rem', color: '#D32F2F', cursor: 'pointer' }}>삭제</button>
+                                                </div>
+                                            </td>
+                                            <td style={tdStyle}>
+                                                <div style={{ fontWeight: 'bold' }}>{item.workplace}</div>
+                                                <div style={{ fontSize: '0.85rem' }}>{teams[item.team]?.label || item.team}</div>
+                                            </td>
+                                            <td style={tdStyle}>{item.job}</td>
+                                            <td style={tdStyle}>
+                                                <div style={tpoTag}>{item.tpo.time} | {item.tpo.place} | {item.tpo.occasion}</div>
+                                            </td>
+                                            <td style={tdStyle}>
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                    {item.criteria.items.map((i, idx) => (
+                                                        <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                            {i.imageUrl && (
+                                                                <img
+                                                                    src={i.imageUrl}
+                                                                    alt=""
+                                                                    style={{ width: '24px', height: '24px', borderRadius: '4px', objectFit: 'cover' }}
+                                                                />
+                                                            )}
+                                                            <span style={{ fontSize: '0.85rem' }}>{i.content}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </td>
+                                            <td style={tdStyle}>
+                                                <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                                                    {item.matching.elements?.map(e => <span key={e} style={itemTag}>{e}</span>)}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan={6} style={{ ...tdStyle, textAlign: 'center', padding: '40px' }}>등록된 항목이 없습니다.</td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </>

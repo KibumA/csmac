@@ -1,14 +1,26 @@
 import React, { useState } from 'react';
 import { usePDCA } from '../../../context/PDCAContext';
 import { colors } from '../../../styles/theme';
+import { ChecklistItem } from '@csmac/types';
 
 interface InspectionModalProps {
     setInspectionModalOpen: (open: boolean) => void;
+    // New props for navigation to Instruction Board
+    setInstructionSubject: (subject: string) => void;
+    setInstructionDescription: (desc: string) => void;
+    setNewTpo: (tpo: { time: string; place: string; occasion: string }) => void;
+    setActiveDoSubPhase: (phase: string) => void;
 }
 
-export const InspectionModal: React.FC<InspectionModalProps> = ({ setInspectionModalOpen }) => {
+export const InspectionModal: React.FC<InspectionModalProps> = ({
+    setInspectionModalOpen,
+    setInstructionSubject,
+    setInstructionDescription,
+    setNewTpo,
+    setActiveDoSubPhase
+}) => {
     const { registeredTpos, setupTasksToSop, selectedInspectionSopId } = usePDCA();
-    const [selectedItems, setSelectedItems] = useState<string[]>([]);
+    const [selectedItems, setSelectedItems] = useState<ChecklistItem[]>([]);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
     const targetSop = registeredTpos.find(t => t.id === selectedInspectionSopId);
@@ -17,12 +29,42 @@ export const InspectionModal: React.FC<InspectionModalProps> = ({ setInspectionM
 
     if (!targetSop) return null;
 
-    const toggleItem = (itemText: string) => {
+    const toggleItem = (item: ChecklistItem) => {
         setSelectedItems(prev =>
-            prev.includes(itemText)
-                ? prev.filter(i => i !== itemText)
-                : [...prev, itemText]
+            prev.some(i => i.content === item.content)
+                ? prev.filter(i => i.content !== item.content)
+                : [...prev, item]
         );
+    };
+
+    const handleSave = () => {
+        if (selectedItems.length === 0) {
+            setErrorMessage('최소 하나 이상의 항목을 선택해주세요.');
+            return;
+        }
+
+        if (!selectedInspectionSopId) return;
+
+        // 1. Save subdivision settings to SOP in context
+        setupTasksToSop(selectedInspectionSopId, selectedItems);
+
+        // 2. Prompt for job card creation
+        const shouldCreateJobCard = window.confirm('세분화 설정이 저장되었습니다. 바로 신규 업무지시(직무카드)를 생성하시겠습니까?');
+
+        if (shouldCreateJobCard) {
+            // Set instruction data for smooth transition
+            setInstructionSubject(targetSop.criteria.checklist);
+            setNewTpo(targetSop.tpo);
+            // Instruction description could be a summary of selected items
+            const itemsSummary = selectedItems.map(item => `- ${item.content}`).join('\n');
+            setInstructionDescription(`다음 항목들에 대한 집중 점검이 필요합니다:\n${itemsSummary}`);
+
+            // Navigate to Instruction Board
+            setActiveDoSubPhase('instruction');
+        }
+
+        // Close modal
+        setInspectionModalOpen(false);
     };
 
     return (
@@ -53,7 +95,7 @@ export const InspectionModal: React.FC<InspectionModalProps> = ({ setInspectionM
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                         {targetSop.criteria.items.map((item, idx) => {
-                            const isSelected = selectedItems.includes(item);
+                            const isSelected = selectedItems.some(i => i.content === item.content);
                             return (
                                 <div
                                     key={idx}
@@ -76,7 +118,7 @@ export const InspectionModal: React.FC<InspectionModalProps> = ({ setInspectionM
                                             color: isSelected ? colors.primaryBlue : colors.textDark,
                                             fontSize: '0.95rem'
                                         }}>
-                                            {item}
+                                            {item.content}
                                         </div>
                                     </div>
                                     <span style={{
@@ -111,32 +153,7 @@ export const InspectionModal: React.FC<InspectionModalProps> = ({ setInspectionM
                         취소
                     </button>
                     <button
-                        onClick={() => {
-                            setErrorMessage(null);
-                            // Duplicate Check logic: Iterate over array of arrays
-                            const currentSop = registeredTpos.find(t => t.id === selectedInspectionSopId);
-                            if (currentSop && currentSop.setupTasks) {
-                                const current = [...selectedItems].sort();
-                                const currentStr = JSON.stringify(current);
-
-                                const isDuplicate = currentSop.setupTasks.some(existingTasks => {
-                                    return JSON.stringify([...existingTasks].sort()) === currentStr;
-                                });
-
-                                if (isDuplicate) {
-                                    setErrorMessage('이미 등록된 설정입니다.');
-                                    return;
-                                }
-                            }
-
-                            if (selectedItems.length === 0) {
-                                if (!confirm('선택된 항목이 없습니다. 설정을 초기화하시겠습니까?')) return;
-                            }
-
-                            setupTasksToSop(selectedInspectionSopId, selectedItems);
-                            setInspectionModalOpen(false);
-                            alert('업무 세분화 및 설정이 저장되었습니다.');
-                        }}
+                        onClick={handleSave}
                         style={{
                             padding: '12px 30px', backgroundColor: colors.primaryBlue, color: 'white',
                             border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold'

@@ -1,6 +1,7 @@
 import React from 'react';
 import { usePDCA } from '../../../context/PDCAContext';
-import { colors } from '../../../styles/theme';
+import { colors, selectStyle } from '../../../styles/theme';
+import { ChecklistItem } from '@csmac/types';
 
 interface JobCardModalProps {
     setInstructionModalOpen: (open: boolean) => void;
@@ -36,8 +37,15 @@ export const JobCardModal: React.FC<JobCardModalProps> = ({
         job,
         addJobInstruction,
         setupTasksToSop,
-        selectedInspectionSopId
+        selectedInspectionSopId,
+        registeredTpos // Get access to registered TPOs
     } = usePDCA();
+
+    // ROBUST TPO LOOKUP:
+    // If an SOP ID is selected, get the definitive TPO from context.
+    // Otherwise (new creation), use the local state newTpo.
+    const targetSop = selectedInspectionSopId ? registeredTpos.find(t => t.id === selectedInspectionSopId) : null;
+    const displayTpo = targetSop ? targetSop.tpo : newTpo;
 
     const resetForm = () => {
         setInstructionModalOpen(false);
@@ -67,17 +75,17 @@ export const JobCardModal: React.FC<JobCardModalProps> = ({
                 <div style={{ backgroundColor: '#F8F9FA', padding: '20px', borderRadius: '10px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
                     {/* Context Summary: Site · Team · Job · Assignee */}
                     <div style={{ borderBottom: '1px solid #EEE', paddingBottom: '10px' }}>
-                        <div style={{ fontSize: '0.85rem', color: colors.textGray, marginBottom: '4px' }}>정보 확인</div>
+                        <div style={{ fontSize: '0.85rem', color: colors.textGray, marginBottom: '4px' }}>사업장/팀/직무</div>
                         <div style={{ fontWeight: 'bold', fontSize: '0.95rem' }}>
                             {workplace} · {teams[team]?.label || team} · {job} / 박지성
                         </div>
                     </div>
 
-                    {(shouldRegisterAsStandard || selectedInspectionSopId) && (
+                    {(shouldRegisterAsStandard || selectedInspectionSopId || (displayTpo.time && displayTpo.place && displayTpo.occasion)) && (
                         <div style={{ borderBottom: '1px solid #EEE', paddingBottom: '10px' }}>
                             <div style={{ fontSize: '0.85rem', color: colors.textGray, marginBottom: '4px' }}>TPO 설정</div>
                             <div style={{ fontWeight: 'bold', fontSize: '0.95rem', color: colors.textDark }}>
-                                [{newTpo.time}] {newTpo.place} · {newTpo.occasion}
+                                [{displayTpo.time}] {displayTpo.place} · {displayTpo.occasion}
                             </div>
                         </div>
                     )}
@@ -119,9 +127,9 @@ export const JobCardModal: React.FC<JobCardModalProps> = ({
                         // Reverse Registration Logic - already configured in TPO modal
                         if (shouldRegisterAsStandard) {
                             if (selectedInspectionSopId) {
-                                setupTasksToSop(selectedInspectionSopId, [instructionSubject], true);
+                                setupTasksToSop(selectedInspectionSopId, [{ content: instructionSubject }], true);
                             } else {
-                                setupTasksToSop(null, [instructionSubject], true, { category: newSopCategory, tpo: newTpo });
+                                setupTasksToSop(null, [{ content: instructionSubject }], true, { category: newSopCategory, tpo: newTpo });
                             }
                             alert('직무카드가 실무자에게 전송되었으며, 업무수행점검 리스트에 등록되었습니다.');
                         } else {
