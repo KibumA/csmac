@@ -10,12 +10,16 @@ import { JobCardBoard } from './dophase/JobCardBoard';
 import { JobCardModal } from './dophase/JobCardModal';
 import { TpoSetupModal } from './dophase/TpoSetupModal';
 import { InspectionModal } from './dophase/InspectionModal';
+import { ChecklistRegistrationModal } from './dophase/ChecklistRegistrationModal';
+import { InstructionLibrary } from './dophase/InstructionLibrary';
 
 const DoPhaseContent = () => {
     const {
         activeDoSubPhase, setActiveDoSubPhase,
         isInspectionModalOpen, setInspectionModalOpen,
-        setSelectedInspectionSopId
+        setSelectedInspectionSopId,
+        setupTasksToSop,
+        handleEdit, handleRemoveRegistered
     } = usePDCA();
 
     // Local State for Modals & UI interactions
@@ -24,6 +28,7 @@ const DoPhaseContent = () => {
     const [isInstructionModalOpen, setInstructionModalOpen] = useState(false);
     const [shouldRegisterAsStandard, setShouldRegisterAsStandard] = useState(false);
     const [isTpoModalOpen, setTpoModalOpen] = useState(false);
+    const [isRegistrationModalOpen, setRegistrationModalOpen] = useState(false);
     const [newSopCategory, setNewSopCategory] = useState('');
     const [newTpo, setNewTpo] = useState({ time: '', place: '', occasion: '' });
     const [showReverseTooltip, setShowReverseTooltip] = useState(false);
@@ -41,6 +46,7 @@ const DoPhaseContent = () => {
             <div style={{ display: 'flex', gap: '10px', marginBottom: '30px', borderBottom: `2px solid ${colors.border}`, paddingBottom: '0' }}>
                 {([
                     { key: 'checklist', label: '업무수행 점검' },
+                    { key: 'library', label: '업무지시 라이브러리' },
                     { key: 'instruction', label: '업무지시 보드' },
                     { key: 'jobcard', label: '직무카드 현황' },
                     { key: 'actionplan', label: '조치계획 보드' }
@@ -83,6 +89,10 @@ const DoPhaseContent = () => {
                 />
             )}
 
+            {activeDoSubPhase === 'library' && (
+                <InstructionLibrary />
+            )}
+
             {activeDoSubPhase === 'checklist' && (
                 <ChecklistBoard
                     showChecklistTooltip={showChecklistTooltip}
@@ -95,6 +105,9 @@ const DoPhaseContent = () => {
                     setInstructionDescription={setInstructionDescription}
                     setNewTpo={setNewTpo}
                     setActiveDoSubPhase={setActiveDoSubPhase}
+                    setRegistrationModalOpen={setRegistrationModalOpen}
+                    handleEdit={handleEdit}
+                    handleRemoveRegistered={handleRemoveRegistered}
                 />
             )}
 
@@ -142,6 +155,18 @@ const DoPhaseContent = () => {
                     setInstructionDescription={setInstructionDescription}
                     setNewTpo={setNewTpo}
                     setActiveDoSubPhase={setActiveDoSubPhase}
+                />
+            )}
+
+            {isRegistrationModalOpen && (
+                <ChecklistRegistrationModal
+                    setModalOpen={setRegistrationModalOpen}
+                    onRegister={(data) => {
+                        setupTasksToSop(null, data.subdivisions, true, {
+                            category: data.checklistItem,
+                            tpo: data.tpo
+                        });
+                    }}
                 />
             )}
         </div>

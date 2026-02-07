@@ -18,47 +18,43 @@ export const ChecklistRegistrationModal: React.FC<ChecklistRegistrationModalProp
     onRegister,
     initialChecklistItem = ''
 }) => {
-    const { tpoOptions, job } = usePDCA();
+    const { tpoOptions, registeredTpos, workplace, team, job } = usePDCA();
 
-    const [checklistItem, setChecklistItem] = useState(initialChecklistItem);
     const [tpo, setTpo] = useState({ time: '', place: '', occasion: '' });
-    const [selectedSubdivisions, setSelectedSubdivisions] = useState<string[]>([]);
+    const [selectedItems, setSelectedItems] = useState<ChecklistItem[]>([]);
 
-    // Temporary: hardcoded subdivisions by job type
-    // TODO: Later, get this from Plan phase data structure  
-    const subdivisionDataByJob: Record<string, string[]> = {
-        '룸메이드': ['[생활 1] 홀 바닥 미끄럼 방지 처리 확인', '[생활 2] 식기 세척기 작업 준도 유지', '[생활 3] 식기 세척기 적정 온도 유지'],
-        '지배인': ['[업무 1] VIP 고객 응대', '[업무 2] 팀별 업무 점검'],
-        '리셉션': ['[업무 1] 체크인 절차', '[업무 2] 체크아웃 정산'],
-        '컨시어즈': ['[업무 1] 수하물 관리', '[업무 2] 시설 안내'],
-        '인스펙터': ['[업무 1] 객실 점검', '[업무 2] 최종 확인'],
-        '시설담당': ['[업무 1] 전기 점검', '[업무 2] 설비 점검'],
-        '정비팀': ['[업무 1] 가구 보수', '[업무 2] 내외장재 보수']
-    };
-    const availableSubdivisions: string[] = subdivisionDataByJob[job] || [];
+    // Find the matching SOP from Plan phase to get real checklist items
+    const matchingSop = registeredTpos.find(r =>
+        r.tpo.time === tpo.time &&
+        r.tpo.place === tpo.place &&
+        r.tpo.occasion === tpo.occasion &&
+        r.team === team
+    );
 
-    const toggleSubdivision = (subdivision: string) => {
-        setSelectedSubdivisions(prev =>
-            prev.includes(subdivision)
-                ? prev.filter(s => s !== subdivision)
-                : [...prev, subdivision]
+    const availableItems = matchingSop?.criteria.items || [];
+
+    const toggleItem = (item: ChecklistItem) => {
+        setSelectedItems(prev =>
+            prev.some(i => i.content === item.content)
+                ? prev.filter(i => i.content !== item.content)
+                : [...prev, item]
         );
     };
 
     const handleRegister = () => {
-        if (!checklistItem || !tpo.place || !tpo.time || !tpo.occasion) {
-            setTimeout(() => alert('체크리스트 항목과 모든 TPO 항목을 입력해주세요.'), 0);
+        if (!tpo.place || !tpo.time || !tpo.occasion) {
+            setTimeout(() => alert('모든 TPO 항목을 선택해주세요.'), 0);
             return;
         }
-        if (selectedSubdivisions.length === 0) {
+        if (selectedItems.length === 0) {
             setTimeout(() => alert('세분화 항목을 1개 이상 선택해주세요.'), 0);
             return;
         }
 
         onRegister({
-            checklistItem,
+            checklistItem: matchingSop?.criteria.checklist || `${tpo.place} ${tpo.occasion}`,
             tpo,
-            subdivisions: selectedSubdivisions.map(s => ({ content: s }))
+            subdivisions: selectedItems
         });
 
         setModalOpen(false);
@@ -92,18 +88,14 @@ export const ChecklistRegistrationModal: React.FC<ChecklistRegistrationModalProp
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                    {/* Checklist Item Input */}
-                    <div>
-                        <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 'bold', marginBottom: '5px' }}>
-                            체크리스트 (점검 항목)
+                    {/* Selected SOP Title Display */}
+                    <div style={{ backgroundColor: '#F0F7FF', padding: '15px', borderRadius: '8px', border: `1px solid ${colors.primaryBlue}` }}>
+                        <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 'bold', marginBottom: '5px', color: colors.primaryBlue }}>
+                            대상 체크리스트 (Plan 단계 등록됨)
                         </label>
-                        <input
-                            type="text"
-                            placeholder="예: 홀 바닥 미끄럼 방지 처리 확인"
-                            value={checklistItem}
-                            onChange={(e) => setChecklistItem(e.target.value)}
-                            style={{ ...selectStyle, width: '100%' }}
-                        />
+                        <div style={{ fontSize: '1rem', fontWeight: 'bold' }}>
+                            {matchingSop ? matchingSop.criteria.checklist : 'TPO를 선택하면 체크리스트가 나타납니다.'}
+                        </div>
                     </div>
 
                     {/* TPO Section */}
@@ -164,53 +156,64 @@ export const ChecklistRegistrationModal: React.FC<ChecklistRegistrationModalProp
                     {/* Subdivision Selection */}
                     <div>
                         <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 'bold', marginBottom: '8px' }}>
-                            세분화 항목 선택
+                            세분화 항목 선택 (이미지 확인 가능)
                         </label>
                         <div style={{
                             border: `1px solid ${colors.border}`,
                             borderRadius: '8px',
-                            padding: '12px',
-                            maxHeight: '200px',
+                            maxHeight: '250px',
                             overflowY: 'auto',
                             backgroundColor: 'white'
                         }}>
-                            {availableSubdivisions.length === 0 ? (
-                                <div style={{ color: colors.textGray, fontSize: '0.9rem' }}>
-                                    세분화 항목이 없습니다. Plan 탭에서 먼저 설정해주세요.
+                            {availableItems.length === 0 ? (
+                                <div style={{ padding: '20px', color: colors.textGray, fontSize: '0.9rem', textAlign: 'center' }}>
+                                    {tpo.place && tpo.occasion ? '해당 TPO에 등록된 체크리스트 항목이 없습니다.' : 'TPO를 선택해 주세요.'}
                                 </div>
                             ) : (
-                                availableSubdivisions.map((subdivision: string, idx: number) => (
-                                    <label
-                                        key={idx}
-                                        style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '10px',
-                                            padding: '8px',
-                                            cursor: 'pointer',
-                                            borderRadius: '5px',
-                                            backgroundColor: selectedSubdivisions.includes(subdivision) ? '#E3F2FD' : 'transparent',
-                                            marginBottom: '5px'
-                                        }}
-                                    >
-                                        <input
-                                            type="checkbox"
-                                            checked={selectedSubdivisions.includes(subdivision)}
-                                            onChange={() => toggleSubdivision(subdivision)}
-                                            style={{ width: '16px', height: '16px', cursor: 'pointer' }}
-                                        />
-                                        <span style={{ fontSize: '0.9rem' }}>{subdivision}</span>
-                                    </label>
-                                ))
+                                availableItems.map((item, idx) => {
+                                    const isSelected = selectedItems.some(i => i.content === item.content);
+                                    return (
+                                        <div
+                                            key={idx}
+                                            onClick={() => toggleItem(item)}
+                                            style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '12px',
+                                                padding: '10px 15px',
+                                                cursor: 'pointer',
+                                                borderBottom: idx < availableItems.length - 1 ? `1px solid ${colors.border}` : 'none',
+                                                backgroundColor: isSelected ? '#E3F2FD' : 'transparent',
+                                                transition: 'background-color 0.2s'
+                                            }}
+                                        >
+                                            <input
+                                                type="checkbox"
+                                                checked={isSelected}
+                                                readOnly
+                                                style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                                            />
+                                            {item.imageUrl && (
+                                                <img
+                                                    src={item.imageUrl}
+                                                    alt=""
+                                                    style={{ width: '40px', height: '40px', borderRadius: '4px', objectFit: 'cover' }}
+                                                />
+                                            )}
+                                            <span style={{ fontSize: '0.95rem', flex: 1 }}>{item.content}</span>
+                                        </div>
+                                    );
+                                })
                             )}
                         </div>
-                        {selectedSubdivisions.length > 0 && (
+                        {selectedItems.length > 0 && (
                             <div style={{
                                 marginTop: '8px',
                                 fontSize: '0.85rem',
-                                color: colors.primaryBlue
+                                color: colors.primaryBlue,
+                                fontWeight: 'bold'
                             }}>
-                                선택됨: {selectedSubdivisions.length}개
+                                선택됨: {selectedItems.length}개 항목
                             </div>
                         )}
                     </div>

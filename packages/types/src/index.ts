@@ -72,6 +72,7 @@ export interface TpoData {
 }
 
 export interface ChecklistItem {
+    id?: number;
     content: string;
     imageFile?: File;
     imageUrl?: string;
@@ -96,7 +97,7 @@ export interface RegisteredTpo {
     tpo: TpoData;
     criteria: CriteriaData;
     matching: MatchingData;
-    setupTasks?: ChecklistItem[][];
+    setupTasks?: { id: number; items: ChecklistItem[] }[];
 }
 
 export interface TeamInfo {
@@ -129,4 +130,15 @@ export interface ActionPlanItem {
     status: 'pending' | 'in_progress' | 'completed' | 'impossible';
     cause?: string;
     solution?: string;
+}
+
+export interface JobInstruction {
+    id: number;
+    targetTeam: string;
+    assignee: string;
+    subject: string;
+    description: string;
+    deadline: string;
+    status: 'sent' | 'received' | 'in_progress' | 'completed';
+    timestamp: string;
 }

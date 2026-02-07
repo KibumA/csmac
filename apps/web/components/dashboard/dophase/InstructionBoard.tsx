@@ -193,7 +193,7 @@ export const InstructionBoard: React.FC<InstructionBoardProps> = ({
                                     </div>
                                     {/* Sub-menu for the configured tasks */}
                                     {t.setupTasks && t.setupTasks.length > 0 && t.setupTasks.map((taskSet, tsIdx) => {
-                                        const combinedTask = taskSet.map(item => item.content).join(', ');
+                                        const combinedTask = taskSet.items.map(item => item.content).join(', ');
                                         return (
                                             <div
                                                 key={`${t.id}-setup-${tsIdx}`}

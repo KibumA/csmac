@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { usePDCA } from '../../../context/PDCAContext';
-import { colors } from '../../../styles/theme';
+import { colors, thStyle, tdStyle, tpoTag } from '../../../styles/theme';
 
 interface ChecklistBoardProps {
     showChecklistTooltip: boolean;
@@ -14,6 +14,9 @@ interface ChecklistBoardProps {
     setInstructionDescription: (desc: string) => void;
     setNewTpo: (tpo: { time: string; place: string; occasion: string }) => void;
     setActiveDoSubPhase: (phase: string) => void;
+    setRegistrationModalOpen: (open: boolean) => void;
+    handleEdit: (id: number) => void;
+    handleRemoveRegistered: (id: number) => void;
 }
 
 export const ChecklistBoard: React.FC<ChecklistBoardProps> = ({
@@ -26,7 +29,10 @@ export const ChecklistBoard: React.FC<ChecklistBoardProps> = ({
     setInstructionSubject,
     setInstructionDescription,
     setNewTpo,
-    setActiveDoSubPhase
+    setActiveDoSubPhase,
+    setRegistrationModalOpen,
+    handleEdit,
+    handleRemoveRegistered
 }) => {
     const {
         registeredTpos,
@@ -34,7 +40,9 @@ export const ChecklistBoard: React.FC<ChecklistBoardProps> = ({
         teams,
         selectedInspectionSopId,
         searchQuery,
-        setSearchQuery
+        setSearchQuery,
+        handleRemoveSetupTask,
+        handleEditSetupTask
     } = usePDCA();
 
     // Filter logic: Team + Search Query
@@ -46,7 +54,7 @@ export const ChecklistBoard: React.FC<ChecklistBoardProps> = ({
             t.criteria.checklist.toLowerCase().includes(query) ||
             t.tpo.place.toLowerCase().includes(query) ||
             t.tpo.occasion.toLowerCase().includes(query) ||
-            (t.setupTasks && t.setupTasks.some(taskSet => taskSet.join(' ').toLowerCase().includes(query)))
+            (t.setupTasks && t.setupTasks.some(taskSet => taskSet.items.map(i => i.content).join(' ').toLowerCase().includes(query)))
         );
     });
 
@@ -109,10 +117,6 @@ export const ChecklistBoard: React.FC<ChecklistBoardProps> = ({
                         )}
                     </div>
                 </div>
-                <div style={{ display: 'flex', gap: '12px' }}>
-                    <button style={{ padding: '8px 25px', backgroundColor: colors.primaryBlue, color: 'white', border: 'none', borderRadius: '25px', fontSize: '0.9rem', fontWeight: 'bold', cursor: 'pointer' }}>수정하기</button>
-                    <button style={{ padding: '8px 25px', backgroundColor: '#3F51B5', color: 'white', border: 'none', borderRadius: '25px', fontSize: '0.9rem', fontWeight: 'bold', cursor: 'pointer' }}>등록하기</button>
-                </div>
             </div>
 
             {/* Search Bar & Filter Tags Section */}
@@ -172,16 +176,15 @@ export const ChecklistBoard: React.FC<ChecklistBoardProps> = ({
                 marginTop: '10px',
                 boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
             }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'center', fontSize: '0.9rem' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
                     <thead>
-                        <tr style={{ backgroundColor: '#F8F9FA', borderBottom: `2px solid ${colors.border}`, color: colors.textDark }}>
-                            <th style={{ padding: '15px 10px', fontWeight: 'bold', width: '100px' }}>사업장</th>
-                            <th style={{ padding: '15px 10px', fontWeight: 'bold', width: '120px' }}>팀/직무</th>
-                            <th style={{ padding: '15px 10px', fontWeight: 'bold', width: '80px' }}>Time</th>
-                            <th style={{ padding: '15px 10px', fontWeight: 'bold', width: '100px' }}>Place</th>
-                            <th style={{ padding: '15px 10px', fontWeight: 'bold', width: '150px' }}>Occasion</th>
-                            <th style={{ padding: '15px 10px', fontWeight: 'bold', textAlign: 'left' }}>체크리스트 (점검 항목)</th>
-                            <th style={{ padding: '15px 10px', fontWeight: 'bold', width: '100px' }}>세분화설정</th>
+                        <tr style={{ backgroundColor: colors.headerBlue, borderBottom: `2px solid ${colors.border}`, color: colors.textDark }}>
+                            <th style={{ ...thStyle, width: '140px' }}>관리</th>
+                            <th style={thStyle}>사업장 / 팀</th>
+                            <th style={thStyle}>직무 / 업무</th>
+                            <th style={{ ...thStyle, width: '220px' }}>TPO 상황 설정</th>
+                            <th style={thStyle}>체크리스트 (점검 항목)</th>
+                            <th style={{ ...thStyle, width: '120px', textAlign: 'center' }}>세분화설정</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -189,37 +192,60 @@ export const ChecklistBoard: React.FC<ChecklistBoardProps> = ({
                             .map((t, index) => (
                                 <React.Fragment key={t.id}>
                                     <tr
-                                        onClick={() => {
-                                            setInstructionSubject(t.criteria.checklist);
-                                            setNewTpo(t.tpo);
-                                            setInstructionDescription('');
-                                            setActiveDoSubPhase('instruction');
-                                        }}
                                         style={{
                                             borderBottom: t.setupTasks && t.setupTasks.length > 0 ? 'none' : `1px solid ${colors.border}`,
                                             backgroundColor: selectedInspectionSopId === t.id ? '#E3F2FD' : 'white',
-                                            transition: 'background-color 0.2s',
-                                            cursor: 'pointer'
-                                        }}
-                                        onMouseOver={(e) => {
-                                            e.currentTarget.style.backgroundColor = '#F0F7FF';
-                                        }}
-                                        onMouseOut={(e) => {
-                                            e.currentTarget.style.backgroundColor = selectedInspectionSopId === t.id ? '#E3F2FD' : 'white';
+                                            transition: 'background-color 0.2s'
                                         }}
                                     >
-                                        <td style={{ padding: '15px 10px', fontWeight: 'bold' }}>{t.workplace}</td>
-                                        <td style={{ padding: '15px 10px' }}>
-                                            <div style={{ fontWeight: 'bold', color: colors.textDark }}>{teams[t.team]?.label}</div>
-                                            <div style={{ fontSize: '0.8rem', color: colors.textGray }}>{t.job}</div>
+                                        <td style={{ ...tdStyle, verticalAlign: 'middle' }}>
+                                            <div style={{ display: 'flex', gap: '8px' }}>
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); handleEdit(t.id); }}
+                                                    style={{
+                                                        fontSize: '0.8rem',
+                                                        color: colors.primaryBlue,
+                                                        cursor: 'pointer',
+                                                        backgroundColor: 'white',
+                                                        border: `1px solid ${colors.border}`,
+                                                        borderRadius: '4px',
+                                                        padding: '4px 10px',
+                                                        fontWeight: 'bold'
+                                                    }}
+                                                >
+                                                    수정
+                                                </button>
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); handleRemoveRegistered(t.id); }}
+                                                    style={{
+                                                        fontSize: '0.8rem',
+                                                        color: '#D32F2F',
+                                                        cursor: 'pointer',
+                                                        backgroundColor: 'white',
+                                                        border: `1px solid ${colors.border}`,
+                                                        borderRadius: '4px',
+                                                        padding: '4px 10px',
+                                                        fontWeight: 'bold'
+                                                    }}
+                                                >
+                                                    삭제
+                                                </button>
+                                            </div>
                                         </td>
-                                        <td style={{ padding: '15px 10px' }}>
-                                            <span style={{ padding: '4px 10px', borderRadius: '4px', backgroundColor: '#E3F2FD', color: colors.primaryBlue, fontSize: '0.8rem', fontWeight: 'bold' }}>{t.tpo.time}</span>
+                                        <td style={tdStyle}>
+                                            <div style={{ fontWeight: 'bold', color: colors.textDark }}>{t.workplace}</div>
+                                            <div style={{ fontSize: '0.85rem', color: colors.textGray }}>{teams[t.team]?.label}</div>
                                         </td>
-                                        <td style={{ padding: '15px 10px', fontWeight: 'bold', color: colors.textDark }}>{t.tpo.place}</td>
-                                        <td style={{ padding: '15px 10px', fontWeight: 'bold', color: colors.primaryBlue }}>{t.tpo.occasion}</td>
-                                        <td style={{ padding: '15px 10px', textAlign: 'left' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                                        <td style={tdStyle}>
+                                            <div style={{ color: colors.textDark }}>{t.job}</div>
+                                        </td>
+                                        <td style={tdStyle}>
+                                            <div style={tpoTag}>
+                                                {t.tpo.time} | {t.tpo.place} | {t.tpo.occasion}
+                                            </div>
+                                        </td>
+                                        <td style={{ ...tdStyle, textAlign: 'left' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                                 {t.setupTasks && t.setupTasks.length > 0 && (
                                                     <button
                                                         onClick={(e) => {
@@ -243,7 +269,7 @@ export const ChecklistBoard: React.FC<ChecklistBoardProps> = ({
                                                 <div style={{ fontWeight: 'bold', color: colors.textDark }}>{t.criteria.checklist}</div>
                                             </div>
                                         </td>
-                                        <td style={{ padding: '15px 10px' }}>
+                                        <td style={{ ...tdStyle, textAlign: 'center' }}>
                                             <button
                                                 onClick={(e) => {
                                                     e.stopPropagation();
@@ -280,7 +306,8 @@ export const ChecklistBoard: React.FC<ChecklistBoardProps> = ({
                                             backgroundColor: '#F8F9FA',
                                             borderBottom: tsIdx === t.setupTasks!.length - 1 ? `1px solid ${colors.border}` : 'none'
                                         }}>
-                                            <td colSpan={5}></td>
+                                            <td colSpan={1}></td>
+                                            <td colSpan={3}></td>
                                             <td style={{ padding: '8px 10px 8px 30px', borderLeft: `3px solid ${colors.primaryBlue}` }}>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                                     <span style={{ color: colors.primaryBlue, fontSize: '1rem' }}>↳</span>
@@ -296,7 +323,49 @@ export const ChecklistBoard: React.FC<ChecklistBoardProps> = ({
                                                         <span style={{ fontWeight: 'bold', color: colors.primaryBlue, marginRight: '5px' }}>
                                                             [설정 {tsIdx + 1}]
                                                         </span>
-                                                        {taskSet.map(item => item.content).join(', ')}
+                                                        {taskSet.items.map((item, iOffset) => (
+                                                            <span key={iOffset} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', marginRight: '8px' }}>
+                                                                {item.content}
+                                                                {item.imageUrl && (
+                                                                    <span title="이미지 있음" style={{ fontSize: '0.9rem', cursor: 'help' }}>📷</span>
+                                                                )}
+                                                                {iOffset < taskSet.items.length - 1 && ','}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+
+                                                    {/* Sub-row Action Buttons */}
+                                                    <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px' }}>
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); handleEditSetupTask(t.id, taskSet.id); }}
+                                                            style={{
+                                                                fontSize: '0.75rem',
+                                                                color: colors.primaryBlue,
+                                                                cursor: 'pointer',
+                                                                backgroundColor: 'white',
+                                                                border: `1px solid ${colors.border}`,
+                                                                borderRadius: '4px',
+                                                                padding: '2px 8px',
+                                                                fontWeight: 'bold'
+                                                            }}
+                                                        >
+                                                            수정
+                                                        </button>
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); handleRemoveSetupTask(taskSet.id); }}
+                                                            style={{
+                                                                fontSize: '0.75rem',
+                                                                color: '#D32F2F',
+                                                                cursor: 'pointer',
+                                                                backgroundColor: 'white',
+                                                                border: `1px solid ${colors.border}`,
+                                                                borderRadius: '4px',
+                                                                padding: '2px 8px',
+                                                                fontWeight: 'bold'
+                                                            }}
+                                                        >
+                                                            삭제
+                                                        </button>
                                                     </div>
                                                 </div>
                                             </td>
@@ -307,7 +376,7 @@ export const ChecklistBoard: React.FC<ChecklistBoardProps> = ({
                             ))}
                         {filteredTpos.length === 0 && (
                             <tr>
-                                <td colSpan={7} style={{ padding: '50px', textAlign: 'center', color: colors.textGray }}>
+                                <td colSpan={6} style={{ padding: '50px', textAlign: 'center', color: colors.textGray }}>
                                     <div style={{ fontSize: '2rem', marginBottom: '10px' }}>📋</div>
                                     <div>등록된 점검 리스트가 없습니다.</div>
                                     <div style={{ fontSize: '0.85rem', marginTop: '5px' }}>Plan 단계에서 새로운 TPO를 등록해주세요.</div>

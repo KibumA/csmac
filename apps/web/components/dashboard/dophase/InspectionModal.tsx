@@ -37,7 +37,7 @@ export const InspectionModal: React.FC<InspectionModalProps> = ({
         );
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
         if (selectedItems.length === 0) {
             setErrorMessage('최소 하나 이상의 항목을 선택해주세요.');
             return;
@@ -46,25 +46,27 @@ export const InspectionModal: React.FC<InspectionModalProps> = ({
         if (!selectedInspectionSopId) return;
 
         // 1. Save subdivision settings to SOP in context
-        setupTasksToSop(selectedInspectionSopId, selectedItems);
+        const success = await setupTasksToSop(selectedInspectionSopId, selectedItems);
 
-        // 2. Prompt for job card creation
-        const shouldCreateJobCard = window.confirm('세분화 설정이 저장되었습니다. 바로 신규 업무지시(직무카드)를 생성하시겠습니까?');
+        if (success) {
+            // 2. Prompt for job card creation
+            const shouldCreateJobCard = window.confirm('세분화 설정이 저장되었습니다. 바로 신규 업무지시(직무카드)를 생성하시겠습니까?');
 
-        if (shouldCreateJobCard) {
-            // Set instruction data for smooth transition
-            setInstructionSubject(targetSop.criteria.checklist);
-            setNewTpo(targetSop.tpo);
-            // Instruction description could be a summary of selected items
-            const itemsSummary = selectedItems.map(item => `- ${item.content}`).join('\n');
-            setInstructionDescription(`다음 항목들에 대한 집중 점검이 필요합니다:\n${itemsSummary}`);
+            if (shouldCreateJobCard) {
+                // Set instruction data for smooth transition
+                setInstructionSubject(targetSop.criteria.checklist);
+                setNewTpo(targetSop.tpo);
+                // Instruction description could be a summary of selected items
+                const itemsSummary = selectedItems.map(item => `- ${item.content}`).join('\n');
+                setInstructionDescription(`다음 항목들에 대한 집중 점검이 필요합니다:\n${itemsSummary}`);
 
-            // Navigate to Instruction Board
-            setActiveDoSubPhase('instruction');
+                // Navigate to Instruction Board
+                setActiveDoSubPhase('instruction');
+            }
+
+            // Close modal
+            setInspectionModalOpen(false);
         }
-
-        // Close modal
-        setInspectionModalOpen(false);
     };
 
     return (
@@ -101,33 +103,55 @@ export const InspectionModal: React.FC<InspectionModalProps> = ({
                                     key={idx}
                                     onClick={() => toggleItem(item)}
                                     style={{
-                                        padding: '15px 20px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '15px',
+                                        padding: '15px',
                                         border: `1px solid ${isSelected ? colors.primaryBlue : colors.border}`,
                                         borderRadius: '10px',
-                                        display: 'flex',
-                                        justifyContent: 'space-between',
-                                        alignItems: 'center',
                                         cursor: 'pointer',
                                         backgroundColor: isSelected ? '#F0F7FF' : 'white',
-                                        transition: 'all 0.2s'
+                                        transition: 'all 0.2s ease'
                                     }}
                                 >
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                        <div style={{
-                                            fontWeight: isSelected ? 'bold' : 'normal',
-                                            color: isSelected ? colors.primaryBlue : colors.textDark,
-                                            fontSize: '0.95rem'
-                                        }}>
+                                    {/* Image Thumbnail */}
+                                    <div style={{
+                                        width: '60px',
+                                        height: '60px',
+                                        borderRadius: '8px',
+                                        backgroundColor: '#f0f0f0',
+                                        overflow: 'hidden',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        flexShrink: 0,
+                                        border: `1px solid ${colors.border}`
+                                    }}>
+                                        {item.imageUrl ? (
+                                            <img
+                                                src={item.imageUrl}
+                                                alt={item.content}
+                                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                                onError={(e) => {
+                                                    (e.target as HTMLImageElement).src = 'https://via.placeholder.com/60?text=No+Img';
+                                                }}
+                                            />
+                                        ) : (
+                                            <span style={{ fontSize: '0.7rem', color: colors.textGray }}>N/A</span>
+                                        )}
+                                    </div>
+
+                                    <div style={{ flex: 1 }}>
+                                        <div style={{ fontSize: '1rem', color: colors.textDark, fontWeight: isSelected ? 'bold' : 'normal' }}>
                                             {item.content}
                                         </div>
                                     </div>
                                     <span style={{
-                                        fontSize: '0.75rem',
-                                        padding: '2px 8px',
-                                        borderRadius: '4px',
-                                        backgroundColor: isSelected ? colors.primaryBlue : '#EEE',
-                                        color: isSelected ? 'white' : colors.textGray,
-                                        fontWeight: 'bold'
+                                        padding: '4px 10px',
+                                        borderRadius: '15px',
+                                        fontSize: '0.8rem',
+                                        backgroundColor: isSelected ? colors.primaryBlue : '#f0f0f0',
+                                        color: isSelected ? 'white' : colors.textGray
                                     }}>
                                         {isSelected ? '선택됨' : '미선택'}
                                     </span>
@@ -137,11 +161,13 @@ export const InspectionModal: React.FC<InspectionModalProps> = ({
                     </div>
                 </div>
 
-                {errorMessage && (
-                    <div style={{ color: '#D32F2F', marginBottom: '10px', textAlign: 'right', fontWeight: 'bold', fontSize: '0.9rem' }}>
-                        {errorMessage}
-                    </div>
-                )}
+                {
+                    errorMessage && (
+                        <div style={{ color: '#D32F2F', marginBottom: '10px', textAlign: 'right', fontWeight: 'bold', fontSize: '0.9rem' }}>
+                            {errorMessage}
+                        </div>
+                    )
+                }
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', paddingTop: '10px', borderTop: `1px solid ${colors.border}` }}>
                     <button
                         onClick={() => setInspectionModalOpen(false)}
@@ -162,7 +188,7 @@ export const InspectionModal: React.FC<InspectionModalProps> = ({
                         설정 저장
                     </button>
                 </div>
-            </div>
-        </div>
+            </div >
+        </div >
     );
 };
