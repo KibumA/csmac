@@ -74,19 +74,7 @@ const DoPhaseContent = () => {
 
             {/* 2. Main Content Area */}
             {activeDoSubPhase === 'instruction' && (
-                <InstructionBoard
-                    setInstructionModalOpen={setInstructionModalOpen}
-                    setInstructionSubject={setInstructionSubject}
-                    setInstructionDescription={setInstructionDescription}
-                    instructionSubject={instructionSubject}
-                    instructionDescription={instructionDescription}
-                    shouldRegisterAsStandard={shouldRegisterAsStandard}
-                    setShouldRegisterAsStandard={setShouldRegisterAsStandard}
-                    showReverseTooltip={showReverseTooltip}
-                    setShowReverseTooltip={setShowReverseTooltip}
-                    setTpoModalOpen={setTpoModalOpen}
-                    setNewTpo={setNewTpo}
-                />
+                <InstructionBoard />
             )}
 
             {activeDoSubPhase === 'library' && (
@@ -151,10 +139,6 @@ const DoPhaseContent = () => {
             {isInspectionModalOpen && (
                 <InspectionModal
                     setInspectionModalOpen={setInspectionModalOpen}
-                    setInstructionSubject={setInstructionSubject}
-                    setInstructionDescription={setInstructionDescription}
-                    setNewTpo={setNewTpo}
-                    setActiveDoSubPhase={setActiveDoSubPhase}
                 />
             )}
 

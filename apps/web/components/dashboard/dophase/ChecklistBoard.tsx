@@ -257,13 +257,20 @@ export const ChecklistBoard: React.FC<ChecklistBoardProps> = ({
                                                             border: 'none',
                                                             padding: 0,
                                                             cursor: 'pointer',
-                                                            fontSize: '0.8rem',
-                                                            color: colors.primaryBlue,
                                                             display: 'flex',
                                                             alignItems: 'center'
                                                         }}
                                                     >
-                                                        {collapsedSops[t.id] ? '▶' : '▼'}
+                                                        <span style={{
+                                                            width: 0,
+                                                            height: 0,
+                                                            borderTop: collapsedSops[t.id] ? '6px solid transparent' : '9px solid #4A90E2',
+                                                            borderBottom: collapsedSops[t.id] ? '6px solid transparent' : 'none',
+                                                            borderLeft: collapsedSops[t.id] ? '9px solid #4A90E2' : '6px solid transparent',
+                                                            borderRight: collapsedSops[t.id] ? 'none' : '6px solid transparent',
+                                                            marginLeft: collapsedSops[t.id] ? '5px' : '2px',
+                                                            marginRight: '5px'
+                                                        }} />
                                                     </button>
                                                 )}
                                                 <div style={{ fontWeight: 'bold', color: colors.textDark }}>{t.criteria.checklist}</div>

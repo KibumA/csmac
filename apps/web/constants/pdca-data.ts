@@ -1,12 +1,12 @@
 import { TeamsMapping, CriteriaData } from '@csmac/types';
 
 export const TEAMS: TeamsMapping = {
-    front: { label: '프론트', jobs: ['지배인', '리셉션', '컨시어즈'] },
-    housekeeping: { label: '객실관리', jobs: ['인스펙터', '룸메이드', '코디사원'] },
-    facility: { label: '시설', jobs: ['엔지니어', '환경관리'] },
-    customer_support: { label: '고객지원/CS', jobs: ['컨택센터 상담원', '고객서비스팀', 'CS파트'] },
-    marketing_sales: { label: '마케팅/영업', jobs: ['마케팅전략팀', '영업기획'] },
-    management: { label: '경영/HR', jobs: ['교육개발팀', '인사(HRD)', '상황실 관리자'] },
+    '프론트': { label: '프론트', jobs: ['지배인', '리셉션', '컨시어즈'] },
+    '객실관리': { label: '객실관리', jobs: ['인스펙터', '룸메이드', '코디사원'] },
+    '시설': { label: '시설', jobs: ['엔지니어', '환경관리'] },
+    '고객지원/CS': { label: '고객지원/CS', jobs: ['컨택센터 상담원', '고객서비스팀', 'CS파트'] },
+    '마케팅/영업': { label: '마케팅/영업', jobs: ['마케팅전략팀', '영업기획'] },
+    '경영/HR': { label: '경영/HR', jobs: ['교육개발팀', '인사(HRD)', '상황실 관리자'] },
 };
 
 export const TPO_OPTIONS = {

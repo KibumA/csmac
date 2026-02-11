@@ -29,6 +29,28 @@ export default function Sidebar() {
                 >
                     PDCA
                 </div>
+                {/* Command Center 버튼 */}
+                <div
+                    onClick={() => setActivePhase('command')}
+                    style={{
+                        backgroundColor: activePhase === 'command' ? colors.primaryBlue : '#E7EEF8',
+                        color: activePhase === 'command' ? 'white' : colors.primaryBlue,
+                        padding: '12px 20px',
+                        borderRadius: '8px',
+                        marginBottom: '15px',
+                        fontWeight: 'bold',
+                        cursor: 'pointer',
+                        fontSize: '0.9rem',
+                        textAlign: 'center',
+                        transition: 'all 0.2s',
+                    }}
+                >
+                    🎯 Command Center
+                </div>
+
+                <div style={{ fontSize: '0.75rem', color: colors.textGray, padding: '0 10px', marginBottom: '8px', fontWeight: 600 }}>
+                    PDCA 단계별
+                </div>
                 <ul style={{ listStyle: 'none', padding: 0 }}>
                     {(['plan', 'do', 'check', 'act'] as const).map(phase => (
                         <li
@@ -49,6 +71,11 @@ export default function Sidebar() {
                         </li>
                     ))}
                 </ul>
+                <div style={{ marginTop: '20px', borderTop: `1px solid ${colors.border}`, paddingTop: '10px' }}>
+                    <a href="/mobile" style={{ display: 'block', padding: '10px 20px', color: colors.textGray, textDecoration: 'none', fontSize: '0.9rem' }}>
+                        📱 Mobile View
+                    </a>
+                </div>
             </nav>
 
             <Modal
@@ -58,6 +85,6 @@ export default function Sidebar() {
             >
                 <ConcernPopup />
             </Modal>
-        </aside>
+        </aside >
     );
 }

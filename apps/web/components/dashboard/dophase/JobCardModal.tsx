@@ -77,7 +77,7 @@ export const JobCardModal: React.FC<JobCardModalProps> = ({
                     <div style={{ borderBottom: '1px solid #EEE', paddingBottom: '10px' }}>
                         <div style={{ fontSize: '0.85rem', color: colors.textGray, marginBottom: '4px' }}>사업장/팀/직무</div>
                         <div style={{ fontWeight: 'bold', fontSize: '0.95rem' }}>
-                            {workplace} · {teams[team]?.label || team} · {job} / 박지성
+                            {workplace} · {teams[team]?.label || team} · {job}
                         </div>
                     </div>
 
@@ -106,20 +106,10 @@ export const JobCardModal: React.FC<JobCardModalProps> = ({
                     onClick={() => {
                         addJobInstruction({
                             targetTeam: team,
-                            assignee: `박지성 (${job})`,
+                            assignee: `담당자 (${job})`,
                             subject: instructionSubject,
                             description: instructionDescription,
-                            deadline: new Date().toLocaleDateString(),
-                            status: 'sent',
-                            timestamp: new Date().toISOString()
-                        });
-
-                        addJobInstruction({
-                            targetTeam: team,
-                            assignee: `박지성 (${job})`,
-                            subject: instructionSubject,
-                            description: instructionDescription,
-                            deadline: new Date().toLocaleDateString(),
+                            deadline: new Date().toISOString(),
                             status: 'sent',
                             timestamp: new Date().toISOString()
                         });
@@ -157,6 +147,6 @@ export const JobCardModal: React.FC<JobCardModalProps> = ({
                     취소
                 </button>
             </div>
-        </div>
+        </div >
     );
 };

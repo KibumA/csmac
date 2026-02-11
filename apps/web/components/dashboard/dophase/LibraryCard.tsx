@@ -5,9 +5,11 @@ import { RegisteredTpo } from '@csmac/types';
 interface LibraryCardProps {
     data: RegisteredTpo;
     onViewDetail: () => void;
+    onToggleBoard: (groupId: number) => void;
+    isDeployed: (groupId: number) => boolean;
 }
 
-export const LibraryCard: React.FC<LibraryCardProps> = ({ data, onViewDetail }) => {
+export const LibraryCard: React.FC<LibraryCardProps> = ({ data, onViewDetail, onToggleBoard, isDeployed }) => {
     // Reverted to count the number of checklist combinations (setupTasks) created in the Do phase
     const subdivisionCount = data.setupTasks?.length || 0;
 
@@ -54,22 +56,23 @@ export const LibraryCard: React.FC<LibraryCardProps> = ({ data, onViewDetail }) 
             <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '20px' }}>
                 <span style={{
                     padding: '3px 10px',
-                    borderRadius: '6px',
+                    borderRadius: '999px',
                     fontSize: '0.75rem',
-                    fontWeight: 'bold',
-                    backgroundColor: '#E3F2FD',
-                    color: '#1976D2'
+                    fontWeight: 900,
+                    backgroundColor: '#E0F2FE',
+                    color: '#0369A1',
+                    border: '1px solid rgba(3,105,161,0.18)',
                 }}>
                     표준
                 </span>
-                <span style={{ padding: '3px 10px', backgroundColor: '#F3F4F6', borderRadius: '6px', fontSize: '0.75rem', color: colors.textDark, fontWeight: '500' }}>
+                <span style={{ padding: '3px 10px', backgroundColor: '#F3F4F6', borderRadius: '999px', fontSize: '0.75rem', color: '#0F172A', fontWeight: 900 }}>
                     {data.job}
                 </span>
-                <span style={{ padding: '3px 10px', backgroundColor: '#F3F4F6', borderRadius: '6px', fontSize: '0.75rem', color: colors.textDark, fontWeight: '500' }}>
+                <span style={{ padding: '3px 10px', backgroundColor: '#F3F4F6', borderRadius: '999px', fontSize: '0.75rem', color: '#0F172A', fontWeight: 500 }}>
                     {data.tpo.occasion}
                 </span>
                 {needsPhoto && (
-                    <span style={{ padding: '3px 10px', backgroundColor: '#F3F4F6', borderRadius: '6px', fontSize: '0.75rem', color: colors.textDark, fontWeight: '500' }}>
+                    <span style={{ padding: '3px 10px', backgroundColor: 'rgba(15,23,42,0.06)', borderRadius: '999px', fontSize: '0.75rem', color: '#0F172A', fontWeight: 500, border: '1px solid rgba(15,23,42,0.16)' }}>
                         사진필수
                     </span>
                 )}
@@ -85,29 +88,49 @@ export const LibraryCard: React.FC<LibraryCardProps> = ({ data, onViewDetail }) 
             </div>
 
             <div style={{ display: 'flex', borderTop: `1px solid ${colors.border}`, paddingTop: '15px', gap: '10px' }}>
-                <button style={{
-                    flex: 1.5,
-                    padding: '10px',
-                    border: 'none',
-                    backgroundColor: colors.textDark,
-                    color: 'white',
-                    borderRadius: '8px',
-                    fontWeight: 'bold',
-                    fontSize: '0.85rem',
-                    cursor: 'pointer'
-                }}>우리팀 보드로</button>
+                <button
+                    onClick={() => {
+                        if (data.setupTasks && data.setupTasks.length > 0) {
+                            // Batch deploy/remove ALL setupTasks
+                            const allDeployed = data.setupTasks.every(g => isDeployed(g.id));
+                            data.setupTasks.forEach(g => {
+                                if (allDeployed) {
+                                    // Remove all if all are deployed
+                                    if (isDeployed(g.id)) onToggleBoard(g.id);
+                                } else {
+                                    // Deploy all that aren't deployed yet
+                                    if (!isDeployed(g.id)) onToggleBoard(g.id);
+                                }
+                            });
+                        }
+                    }}
+                    style={{
+                        flex: 1.5,
+                        padding: '8px 10px',
+                        border: '1px solid rgba(15,23,42,0.10)',
+                        backgroundColor: (data.setupTasks && data.setupTasks.length > 0 && data.setupTasks.every(g => isDeployed(g.id))) ? '#E8F5E9' : '#0F172A',
+                        color: (data.setupTasks && data.setupTasks.length > 0 && data.setupTasks.every(g => isDeployed(g.id))) ? '#2E7D32' : 'white',
+                        borderRadius: '10px',
+                        fontWeight: 950,
+                        fontSize: '12px',
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap',
+                    }}>
+                    {(data.setupTasks && data.setupTasks.length > 0 && data.setupTasks.every(g => isDeployed(g.id))) ? '보드에서 제거' : '우리팀 보드로'}
+                </button>
                 <button
                     onClick={onViewDetail}
                     style={{
                         flex: 1,
-                        padding: '10px',
-                        border: `1px solid ${colors.border}`,
+                        padding: '8px 10px',
+                        border: `1px solid rgba(15,23,42,0.10)`,
                         backgroundColor: 'white',
-                        color: colors.textDark,
-                        borderRadius: '8px',
-                        fontSize: '0.85rem',
-                        fontWeight: '500',
-                        cursor: 'pointer'
+                        color: '#0F172A',
+                        borderRadius: '10px',
+                        fontSize: '12px',
+                        fontWeight: 950,
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap',
                     }}>상세보기</button>
             </div>
         </div>

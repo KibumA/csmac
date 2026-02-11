@@ -4,6 +4,7 @@ import React from 'react';
 import { PDCAProvider, usePDCA } from '../context/PDCAContext';
 import { colors } from '../styles/theme';
 import Sidebar from '../components/layout/Sidebar';
+import CommandCenterContent from '../components/dashboard/CommandCenterContent';
 import PlanPhaseContent from '../components/dashboard/PlanPhaseContent';
 import DoPhaseContent from '../components/dashboard/DoPhaseContent';
 import CheckPhaseContent from '../components/dashboard/CheckPhaseContent';
@@ -18,10 +19,11 @@ function DashboardContent() {
 
             {/* MAIN CONTENT */}
             <main style={{ flex: 1, padding: '30px 40px', overflowX: 'auto' }}>
+                {activePhase === 'command' && <CommandCenterContent />}
                 {activePhase === 'plan' && <PlanPhaseContent />}
                 {activePhase === 'do' && <DoPhaseContent />}
                 {activePhase === 'check' && <CheckPhaseContent colors={colors} />}
-                {activePhase === 'act' && <ActPhaseContent colors={colors} />}
+                {activePhase === 'act' && <ActPhaseContent />}
             </main>
         </div>
     );

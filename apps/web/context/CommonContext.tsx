@@ -19,9 +19,9 @@ export interface CommonContextType {
 const CommonContext = createContext<CommonContextType | undefined>(undefined);
 
 export const CommonProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-    const [activePhase, setActivePhase] = useState<Phase>('plan');
+    const [activePhase, setActivePhase] = useState<Phase>('command');
     const [workplace, setWorkplace] = useState('소노벨 천안');
-    const [team, setTeam] = useState('front');
+    const [team, setTeam] = useState('프론트');
     const [job, setJob] = useState('지배인');
     const [registeredTpos, setRegisteredTpos] = useState<RegisteredTpo[]>([]);
 

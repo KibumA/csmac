@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { useDo } from './DoContext';
+import { supabase } from '../utils/supabaseClient';
+import { useCommon } from './CommonContext';
 import { ActionPlanItem } from '@csmac/types';
 
 export interface ActContextType {
@@ -10,31 +11,40 @@ export interface ActContextType {
     addActionPlanItem: (item: Omit<ActionPlanItem, 'id'>) => void;
     stats: {
         totalRecords: number;
-        compliantCount: number;
+        completedCount: number;
         nonCompliantCount: number;
         complianceRate: number;
         actionRequiredCount: number;
+        delayedCount: number;
     };
+    allJobs: any[];
 }
 
 const ActContext = createContext<ActContextType | undefined>(undefined);
 
 export const ActProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-    const { inspectionResults } = useDo();
-    const [showConcernPopup, setShowConcernPopup] = useState(false);
-    const [actionPlanItems, setActionPlanItems] = useState<ActionPlanItem[]>([
-        {
-            id: 1,
-            inspectionId: 0,
-            team: '객실팀',
-            area: '로비',
-            category: '로비안전성',
-            issue: '로비 회전문 파손 상태를 조치해주세요!',
-            reason: '회전문 구동축 소음 및 간헐적 멈춤',
-            timestamp: '2025.12.01 14:00',
-            status: 'pending'
+    const { team } = useCommon();
+    const [jobData, setJobData] = useState<any[]>([]);
+
+    const fetchActData = async () => {
+        const { data, error } = await supabase
+            .from('job_instructions')
+            .select('*')
+            .eq('team', team);
+
+        if (data) {
+            setJobData(data);
         }
-    ]);
+    };
+
+    React.useEffect(() => {
+        fetchActData();
+        const interval = setInterval(fetchActData, 5000); // Poll every 5s for MVP real-time feel
+        return () => clearInterval(interval);
+    }, [team]);
+
+    const [showConcernPopup, setShowConcernPopup] = useState(false);
+    const [actionPlanItems, setActionPlanItems] = useState<ActionPlanItem[]>([]);
 
     const updateActionPlanItem = (id: number, updates: Partial<ActionPlanItem>) => {
         setActionPlanItems(prev => prev.map(item => item.id === id ? { ...item, ...updates } : item));
@@ -45,19 +55,55 @@ export const ActProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setActionPlanItems(prev => [...prev, { ...item, id: newId }]);
     };
 
+    // Calculate Stats from real DB data
+    const totalRecords = jobData.length;
+
+    // Status counts
+    const completedCount = jobData.filter(j => j.status === 'completed' || j.status === 'non_compliant').length;
+    const delayedCount = jobData.filter(j => j.status === 'delayed').length;
+    const nonCompliantCount = jobData.filter(j => j.status === 'non_compliant' || j.verification_result === 'fail').length;
+
+    // Compliance Rate: (Completed - NonCompliant) / Completed
+    // Or simply (Pass / Total Verified)
+    const verifiedCount = jobData.filter(j => j.verification_result !== null).length;
+    const passCount = jobData.filter(j => j.verification_result === 'pass').length;
+
+    const complianceRate = verifiedCount > 0
+        ? Math.round((passCount / verifiedCount) * 100)
+        : 100;
+
     const stats = {
-        totalRecords: inspectionResults.length,
-        compliantCount: inspectionResults.filter(r => r.status === 'O').length,
-        nonCompliantCount: inspectionResults.filter(r => r.status === 'X').length,
-        complianceRate: inspectionResults.length > 0
-            ? Math.round((inspectionResults.filter(r => r.status === 'O').length / inspectionResults.length) * 100)
-            : 100,
-        actionRequiredCount: inspectionResults.filter(r => r.status === 'X').length
+        totalRecords,
+        completedCount,
+        nonCompliantCount,
+        complianceRate,
+        actionRequiredCount: nonCompliantCount,
+        delayedCount
     };
+
+    // Derived Action Plan Items from Non-Compliant Jobs
+    // In a real app, this might be a separate table 'action_items' linked to jobs
+    // For MVP, we map non-compliant jobs to action items if they aren't "resolved" (simulated)
+    const activeIssues = jobData
+        .filter(j => (j.status === 'non_compliant' || j.verification_result === 'fail'))
+        .map(j => ({
+            id: j.id,
+            inspectionId: j.id,
+            team: j.team,
+            area: j.subject.substring(0, 15) + '...',
+            category: '미준수',
+            issue: j.subject,
+            reason: j.description || '이행 미준수',
+            timestamp: j.completed_at || j.created_at,
+            status: 'pending' as const
+        }));
 
     return (
         <ActContext.Provider value={{
-            showConcernPopup, setShowConcernPopup, actionPlanItems, updateActionPlanItem, addActionPlanItem, stats
+            showConcernPopup, setShowConcernPopup,
+            actionPlanItems: activeIssues, // Use real issues
+            updateActionPlanItem, addActionPlanItem, stats,
+            allJobs: jobData
         }}>
             {children}
         </ActContext.Provider>

@@ -1,410 +1,386 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import {
+    DndContext,
+    DragOverlay,
+    useSensor,
+    useSensors,
+    PointerSensor,
+    DragStartEvent,
+    DragEndEvent,
+    defaultDropAnimationSideEffects,
+    DropAnimation
+} from '@dnd-kit/core';
 import { usePDCA } from '../../../context/PDCAContext';
-import { colors, selectStyle } from '../../../styles/theme';
-import { ChecklistItem } from '@csmac/types';
-import { ChecklistRegistrationModal } from './ChecklistRegistrationModal';
+import { colors } from '../../../styles/theme';
+import { TeamMember, TaskCardData, RegisteredTpo } from '@csmac/types';
+import { getStageFromTpo } from '../../../utils/tpoUtils';
+import { TeamRosterPanel } from './InstructionBoard/TeamRosterPanel';
+import { TaskTemplateBoard } from './InstructionBoard/TaskTemplateBoard';
+import { User, Send } from 'lucide-react';
 
-interface InstructionBoardProps {
-    setInstructionModalOpen: (open: boolean) => void;
-    setInstructionSubject: (subject: string) => void;
-    setInstructionDescription: (desc: string) => void;
-    instructionSubject: string;
-    instructionDescription: string;
-    shouldRegisterAsStandard: boolean;
-    setShouldRegisterAsStandard: (checked: boolean) => void;
-    showReverseTooltip: boolean;
-    setShowReverseTooltip: (show: boolean) => void;
-    setTpoModalOpen: (open: boolean) => void;
-    setNewTpo: (tpo: { time: string; place: string; occasion: string }) => void;
-}
+// ─── Static Team Rosters (realistic headcounts per role) ───
+const TEAM_ROSTERS: Record<string, TeamMember[]> = {
+    '프론트': [
+        // 지배인 1명
+        { id: 'member-front-0', name: '김철수', role: '지배인', status: 'working', shift: 'Day' },
+        // 리셉션 5명
+        { id: 'member-front-1', name: '이영희', role: '리셉션', status: 'working', shift: 'Day' },
+        { id: 'member-front-2', name: '노현우', role: '리셉션', status: 'working', shift: 'Day' },
+        { id: 'member-front-3', name: '배수진', role: '리셉션', status: 'working', shift: 'Day' },
+        { id: 'member-front-4', name: '오세진', role: '리셉션', status: 'break', shift: 'Day' },
+        { id: 'member-front-5', name: '권도현', role: '리셉션', status: 'working', shift: 'Day' },
+        // 컨시어즈 3명
+        { id: 'member-front-6', name: '최윤서', role: '컨시어즈', status: 'working', shift: 'Day' },
+        { id: 'member-front-7', name: '윤하준', role: '컨시어즈', status: 'working', shift: 'Day' },
+        { id: 'member-front-8', name: '정다은', role: '컨시어즈', status: 'off', shift: 'Day' },
+    ],
+    '객실관리': [
+        // 인스펙터 3명
+        { id: 'member-hk-0', name: '박미숙', role: '인스펙터', status: 'working', shift: 'Day' },
+        { id: 'member-hk-1', name: '최영미', role: '인스펙터', status: 'working', shift: 'Day' },
+        { id: 'member-hk-2', name: '서금옥', role: '인스펙터', status: 'working', shift: 'Day' },
+        // 룸메이드 7명
+        { id: 'member-hk-3', name: '김순영', role: '룸메이드', status: 'working', shift: 'Day' },
+        { id: 'member-hk-4', name: '한옥순', role: '룸메이드', status: 'break', shift: 'Day' },
+        { id: 'member-hk-5', name: '오미영', role: '룸메이드', status: 'working', shift: 'Day' },
+        { id: 'member-hk-6', name: '강수미', role: '룸메이드', status: 'working', shift: 'Day' },
+        { id: 'member-hk-7', name: '임보라', role: '룸메이드', status: 'working', shift: 'Day' },
+        { id: 'member-hk-8', name: '배옥희', role: '룸메이드', status: 'off', shift: 'Day' },
+        { id: 'member-hk-9', name: '허순덕', role: '룸메이드', status: 'working', shift: 'Day' },
+        // 코디사원 3명
+        { id: 'member-hk-10', name: '이정자', role: '코디사원', status: 'working', shift: 'Day' },
+        { id: 'member-hk-11', name: '정혜진', role: '코디사원', status: 'working', shift: 'Day' },
+        { id: 'member-hk-12', name: '윤정희', role: '코디사원', status: 'break', shift: 'Day' },
+    ],
+    '시설': [
+        // 엔지니어 5명
+        { id: 'member-fc-0', name: '김태섭', role: '엔지니어', status: 'working', shift: 'Day' },
+        { id: 'member-fc-1', name: '박진우', role: '엔지니어', status: 'working', shift: 'Day' },
+        { id: 'member-fc-2', name: '한승기', role: '엔지니어', status: 'working', shift: 'Day' },
+        { id: 'member-fc-3', name: '오창민', role: '엔지니어', status: 'break', shift: 'Day' },
+        { id: 'member-fc-4', name: '강현철', role: '엔지니어', status: 'working', shift: 'Day' },
+        // 환경관리 3명
+        { id: 'member-fc-5', name: '이상호', role: '환경관리', status: 'working', shift: 'Day' },
+        { id: 'member-fc-6', name: '최동혁', role: '환경관리', status: 'working', shift: 'Day' },
+        { id: 'member-fc-7', name: '정용수', role: '환경관리', status: 'off', shift: 'Day' },
+    ],
+    '고객지원/CS': [
+        // 컨택센터 상담원 5명
+        { id: 'member-cs-0', name: '김나연', role: '컨택센터 상담원', status: 'working', shift: 'Day' },
+        { id: 'member-cs-1', name: '오예진', role: '컨택센터 상담원', status: 'working', shift: 'Day' },
+        { id: 'member-cs-2', name: '윤수아', role: '컨택센터 상담원', status: 'working', shift: 'Day' },
+        { id: 'member-cs-3', name: '노은지', role: '컨택센터 상담원', status: 'break', shift: 'Day' },
+        { id: 'member-cs-4', name: '허윤아', role: '컨택센터 상담원', status: 'working', shift: 'Day' },
+        // 고객서비스팀 3명
+        { id: 'member-cs-5', name: '이수빈', role: '고객서비스팀', status: 'working', shift: 'Day' },
+        { id: 'member-cs-6', name: '한지유', role: '고객서비스팀', status: 'working', shift: 'Day' },
+        { id: 'member-cs-7', name: '임하늘', role: '고객서비스팀', status: 'off', shift: 'Day' },
+        // CS파트 3명
+        { id: 'member-cs-8', name: '박소희', role: 'CS파트', status: 'working', shift: 'Day' },
+        { id: 'member-cs-9', name: '정서영', role: 'CS파트', status: 'working', shift: 'Day' },
+        { id: 'member-cs-10', name: '강채원', role: 'CS파트', status: 'working', shift: 'Day' },
+    ],
+    '마케팅/영업': [
+        // 마케팅전략팀 3명
+        { id: 'member-ms-0', name: '김지훈', role: '마케팅전략팀', status: 'working', shift: 'Day' },
+        { id: 'member-ms-1', name: '한민서', role: '마케팅전략팀', status: 'working', shift: 'Day' },
+        { id: 'member-ms-2', name: '오준혁', role: '마케팅전략팀', status: 'break', shift: 'Day' },
+        // 영업기획 3명
+        { id: 'member-ms-3', name: '이하은', role: '영업기획', status: 'working', shift: 'Day' },
+        { id: 'member-ms-4', name: '정우빈', role: '영업기획', status: 'working', shift: 'Day' },
+        { id: 'member-ms-5', name: '윤시우', role: '영업기획', status: 'off', shift: 'Day' },
+    ],
+    '경영/HR': [
+        // 교육개발팀 3명
+        { id: 'member-mg-0', name: '김관호', role: '교육개발팀', status: 'working', shift: 'Day' },
+        { id: 'member-mg-1', name: '오민수', role: '교육개발팀', status: 'working', shift: 'Day' },
+        { id: 'member-mg-2', name: '윤미선', role: '교육개발팀', status: 'working', shift: 'Day' },
+        // 인사(HRD) 3명
+        { id: 'member-mg-3', name: '이수정', role: '인사(HRD)', status: 'working', shift: 'Day' },
+        { id: 'member-mg-4', name: '한경민', role: '인사(HRD)', status: 'break', shift: 'Day' },
+        { id: 'member-mg-5', name: '임세환', role: '인사(HRD)', status: 'working', shift: 'Day' },
+        // 상황실 관리자 3명
+        { id: 'member-mg-6', name: '박성훈', role: '상황실 관리자', status: 'working', shift: 'Day' },
+        { id: 'member-mg-7', name: '정보경', role: '상황실 관리자', status: 'working', shift: 'Day' },
+        { id: 'member-mg-8', name: '강호진', role: '상황실 관리자', status: 'off', shift: 'Day' },
+    ],
+};
 
-export const InstructionBoard: React.FC<InstructionBoardProps> = ({
-    setInstructionModalOpen,
-    setInstructionSubject,
-    setInstructionDescription,
-    instructionSubject,
-    instructionDescription,
-    shouldRegisterAsStandard,
-    setShouldRegisterAsStandard,
-    showReverseTooltip,
-    setShowReverseTooltip,
-    setTpoModalOpen,
-    setNewTpo
-}) => {
+// ─── Demo Scenarios for Pre/Post stages ───
+const DEMO_SCENARIOS: RegisteredTpo[] = [
+    // Pre-work (업무 전) - 3 scenarios
+    {
+        id: -1, workplace: '소노벨 천안', team: '프론트', job: '지배인',
+        tpo: { time: '오픈 준비', place: '객실', occasion: '브리핑' },
+        criteria: { checklist: '조회 브리핑 및 인수인계 확인', items: [] },
+        matching: { evidence: '', method: '', elements: [] }
+    },
+    {
+        id: -2, workplace: '소노벨 천안', team: '프론트', job: '리셉션',
+        tpo: { time: '개시 전 점검', place: '로비', occasion: '입실 준비' },
+        criteria: { checklist: '로비 청결 상태 및 비품 점검', items: [] },
+        matching: { evidence: '', method: '', elements: [] }
+    },
+    {
+        id: -3, workplace: '소노벨 천안', team: '프론트', job: '컨시어즈',
+        tpo: { time: '오픈 전', place: '프론트 데스크', occasion: '준비' },
+        criteria: { checklist: '체크인 시스템 가동 및 키카드 준비', items: [] },
+        matching: { evidence: '', method: '', elements: [] }
+    },
+    // Post-work (업무 후) - 3 scenarios
+    {
+        id: -4, workplace: '소노벨 천안', team: '프론트', job: '지배인',
+        tpo: { time: '마감', place: '객실', occasion: '정산' },
+        criteria: { checklist: '일일 매출 정산 및 마감 보고 작성', items: [] },
+        matching: { evidence: '', method: '', elements: [] }
+    },
+    {
+        id: -5, workplace: '소노벨 천안', team: '프론트', job: '리셉션',
+        tpo: { time: '종료', place: '로비', occasion: '퇴실 확인' },
+        criteria: { checklist: '미퇴실 고객 확인 및 야간 인수인계', items: [] },
+        matching: { evidence: '', method: '', elements: [] }
+    },
+    {
+        id: -6, workplace: '소노벨 천안', team: '프론트', job: '컨시어즈',
+        tpo: { time: 'close', place: '프론트 데스크', occasion: '보고' },
+        criteria: { checklist: '고객 VOC 일지 정리 및 야간 당직 전달', items: [] },
+        matching: { evidence: '', method: '', elements: [] }
+    },
+];
+
+export const InstructionBoard = () => {
     const {
         workplace, setWorkplace,
         team, setTeam,
-        job, setJob,
         teams,
-        registeredTpos,
-        setSelectedInspectionSopId,
-        selectedInspectionSopId,
-        setupTasksToSop
+        registeredTpos // Source of Tasks
     } = usePDCA();
 
-    const [checklistRegModalOpen, setChecklistRegModalOpen] = useState(false);
+    // 1. Local State
+    const [activeJobFilter, setActiveJobFilter] = useState<string>('전체');
+    const [assignments, setAssignments] = useState<Record<number, string[]>>({}); // taskId -> memberId[]
+    const [activeDraggable, setActiveDraggable] = useState<TeamMember | null>(null);
 
-    // Use jobs from the global teams mapping
-    const currentJobs = teams[team]?.jobs || [];
+    // 2. Computed Data
+    const currentTeamJobs = useMemo(() => teams[team]?.jobs || [], [team, teams]);
 
-    const jobDescMap: { [key: string]: string } = {
-        '지배인': '팀 총괄 보조, VIP 응대',
-        '리셉션': '체크인/아웃, 정산 관리',
-        '컨시어즈': '고객 수하물, 시설 안내',
-        '인스펙터': '객실 정비 상태 최종 점검',
-        '룸메이드': '객실 청구, 베딩, 소모품 보충',
-        '시설담당': '전기, 설비, 기계 상시 점검',
-        '정비팀': '가구, 내외장재 보수'
+    const teamMembers = useMemo(() => {
+        return TEAM_ROSTERS[team] || [];
+    }, [team]);
+
+    // Transform RegisteredTpos to TaskCardData structure with Stages
+    // Merge DB data + demo scenarios for pre/post columns
+    const activeTasks: TaskCardData[] = useMemo(() => {
+        const dbTasks = registeredTpos
+            .filter(t => t.team === team)
+            .map(t => ({
+                ...t,
+                stage: getStageFromTpo(t.tpo.time, t.tpo.occasion),
+                assignedMemberIds: assignments[t.id] || []
+            }));
+
+        const demoTasks = DEMO_SCENARIOS
+            .filter(t => t.team === team)
+            .map(t => ({
+                ...t,
+                stage: getStageFromTpo(t.tpo.time, t.tpo.occasion),
+                assignedMemberIds: assignments[t.id] || []
+            }));
+
+        return [...demoTasks, ...dbTasks];
+    }, [registeredTpos, team, assignments]);
+
+    // 3. DnD Sensors
+    const sensors = useSensors(
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 8, // Require 8px movement to start drag (prevents accidental clicks)
+            }
+        })
+    );
+
+    // 4. Handlers
+    const handleDragStart = (event: DragStartEvent) => {
+        if (event.active.data.current?.type === 'member') {
+            setActiveDraggable(event.active.data.current.member as TeamMember);
+        }
+    };
+
+    const handleDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event;
+        setActiveDraggable(null);
+
+        if (over && active.data.current?.type === 'member') {
+            const memberId = active.id as string;
+            const taskIdStr = over.id as string;
+
+            // Check if dropped on a task
+            if (taskIdStr.startsWith('task-')) {
+                const taskId = parseInt(taskIdStr.replace('task-', ''));
+
+                // Update assignment
+                setAssignments(prev => {
+                    const currentAssignees = prev[taskId] || [];
+                    if (currentAssignees.includes(memberId)) return prev; // Already assigned
+                    return {
+                        ...prev,
+                        [taskId]: [...currentAssignees, memberId]
+                    };
+                });
+            }
+        }
+    };
+
+    const handleUnassign = (taskId: number, memberId: string) => {
+        setAssignments(prev => ({
+            ...prev,
+            [taskId]: (prev[taskId] || []).filter(id => id !== memberId)
+        }));
+    };
+
+    const handleBatchDeploy = () => {
+        const assignedCount = Object.keys(assignments).length;
+        if (assignedCount === 0) {
+            alert('배정된 업무가 없습니다.');
+            return;
+        }
+        alert(`${assignedCount}건의 업무 지시가 실무자에게 배포되었습니다.`);
+        // TODO: Actual DB or Context update logic can go here
+    };
+
+    const dropAnimation: DropAnimation = {
+        sideEffects: defaultDropAnimationSideEffects({
+            styles: {
+                active: {
+                    opacity: '0.5',
+                },
+            },
+        }),
     };
 
     return (
-        <>
-            <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', alignItems: 'center' }}>
-                <div style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>업무지시 보드</div>
-                <select
-                    style={selectStyle}
-                    value={workplace}
-                    onChange={(e) => setWorkplace(e.target.value)}
-                >
-                    <option value="소노벨 천안">소노벨 천안</option>
-                    <option value="소노벨 경주">소노벨 경주</option>
-                </select>
-                <select
-                    style={selectStyle}
-                    value={team}
-                    onChange={(e) => setTeam(e.target.value)}
-                >
-                    {Object.entries(teams).map(([key, info]) => (
-                        <option key={key} value={key}>{info.label}</option>
-                    ))}
-                </select>
-            </div>
-
+        <DndContext
+            sensors={sensors}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+        >
             <div style={{
-                backgroundColor: colors.primaryBlue,
-                borderRadius: '15px',
-                padding: '25px 40px',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                color: 'white',
-                marginBottom: '30px',
-                boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                display: 'flex', flexDirection: 'column', height: '650px',
+                backgroundColor: 'white', borderRadius: '16px',
+                boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+                border: `1px solid ${colors.border}`,
+                overflow: 'hidden'
             }}>
-                <div style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>{teams[team]?.label}</div>
-                <div style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>팀원 수 12명</div>
-                <div style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>오늘 근무자 수 9명</div>
-                <div style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>오늘 <span style={{ color: '#FFCDD2', textDecoration: 'underline' }}>휴무자 수</span> 3명</div>
-            </div>
+                {/* Top Control Bar */}
+                <div style={{
+                    padding: '16px 24px', borderBottom: `1px solid ${colors.border}`,
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    backgroundColor: 'white'
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                        <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#1E293B' }}>업무지시 상황실 (Control Tower)</h2>
+                        <div style={{ height: '24px', width: '1px', backgroundColor: '#D1D5DB', margin: '0 8px' }}></div>
 
-            {/* Row 1: Role Selection Headers Container */}
-            <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(3, 1fr)',
-                gap: '20px',
-                marginBottom: '40px', // Robust physical separation
-                alignItems: 'stretch'
-            }}>
-                {currentJobs.map((jobName, colIdx) => {
-                    return (
-                        <div
-                            key={`header-${colIdx}`}
-                            onClick={() => setJob(jobName)}
+                        {/* Filters */}
+                        <select
+                            value={workplace}
+                            onChange={(e) => setWorkplace(e.target.value)}
                             style={{
-                                border: job === jobName ? `2px solid ${colors.primaryBlue}` : `2px solid ${colors.textDark}`,
-                                borderRadius: '15px',
-                                padding: '20px',
-                                backgroundColor: 'white',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s',
-                                boxShadow: job === jobName ? `0 0 10px ${colors.lightBlue}` : 'none',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                minHeight: '180px'
+                                border: `1px solid ${colors.border}`, borderRadius: '6px',
+                                padding: '6px 12px', fontSize: '0.875rem', fontWeight: 'bold',
+                                color: '#374151', backgroundColor: 'white', cursor: 'pointer'
                             }}
                         >
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '15px' }}>
-                                <div style={{ fontWeight: 'bold', fontSize: '1.2rem', borderBottom: `2px solid ${colors.primaryBlue}`, paddingBottom: '2px' }}>{jobName}</div>
-                                <div style={{ fontSize: '0.8rem', color: colors.primaryBlue, fontWeight: 'bold' }}>{jobDescMap[jobName] || '직무 상세 설명'}</div>
-                            </div>
-                            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '20px', marginTop: 'auto' }}>
-                                <div style={{ padding: '4px 12px', borderRadius: '6px', border: `1px solid ${colors.border}`, fontSize: '0.85rem' }}>{jobName} ∨</div>
-                            </div>
-                            <div style={{ borderTop: `1px solid ${colors.border}`, paddingTop: '15px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <span style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>근무자</span>
-                                    {['박', '최'].map((w, idx) => (
-                                        <div key={idx} style={{ width: '30px', height: '30px', backgroundColor: '#CFD8DC', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.85rem', fontWeight: 'bold' }}>{w}</div>
-                                    ))}
-                                    <div style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>+1</div>
-                                </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <span style={{ fontWeight: 'bold', fontSize: '0.9rem', color: '#D32F2F' }}>휴무자</span>
-                                    <div style={{ width: '30px', height: '30px', backgroundColor: 'white', border: `1px solid ${colors.border}`, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.85rem' }}>김</div>
-                                </div>
-                            </div>
-                            <div style={{ marginTop: '10px', fontSize: '0.75rem', color: colors.primaryBlue, display: 'flex', justifyContent: 'space-between' }}>
-                                <span>평균 준수율: 92.5%</span>
-                                <span>이행근거 요구: 24건</span>
-                            </div>
-                        </div>
-                    );
-                })}
-            </div>
-
-            {/* Row 2: Selected Job Detail & Instruction Input */}
-            <div style={{
-                display: 'flex',
-                gap: '20px',
-                marginBottom: '30px'
-            }}>
-                {/* Left: Job Detail/SOP List */}
-                <div style={{ flex: 1, backgroundColor: 'white', borderRadius: '15px', padding: '25px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', border: `1px solid ${colors.border}` }}>
-                    <div style={{ fontWeight: 'bold', fontSize: '1.2rem', marginBottom: '15px', borderBottom: `2px solid ${colors.border}`, paddingBottom: '10px' }}>{job} 업무 리스트</div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                        {registeredTpos
-                            .filter(t => t.job === job)
-                            .slice(0, 5) // Show top 5
-                            .map(t => (
-                                <div key={t.id} style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                                    <div
-                                        onClick={() => {
-                                            setSelectedInspectionSopId(t.id);
-                                            setInstructionSubject(t.criteria.checklist);
-                                            // Sync TPO state
-                                            setNewTpo(t.tpo);
-                                            // Only clear description if it was empty or from a different SOP to avoid losing work
-                                            if (!instructionDescription || selectedInspectionSopId !== t.id) {
-                                                setInstructionDescription('');
-                                            }
-                                        }}
-                                        style={{
-                                            padding: '10px',
-                                            backgroundColor: '#F8F9FA',
-                                            borderRadius: '8px',
-                                            fontSize: '0.9rem',
-                                            fontWeight: 'bold',
-                                            cursor: 'pointer',
-                                            border: selectedInspectionSopId === t.id ? `2px solid ${colors.primaryBlue}` : '1px solid transparent',
-                                            transition: 'all 0.2s'
-                                        }}
-                                    >
-                                        [{t.tpo.time}] {t.criteria.checklist}
-                                    </div>
-                                    {/* Sub-menu for the configured tasks */}
-                                    {t.setupTasks && t.setupTasks.length > 0 && t.setupTasks.map((taskSet, tsIdx) => {
-                                        const combinedTask = taskSet.items.map(item => item.content).join(', ');
-                                        return (
-                                            <div
-                                                key={`${t.id}-setup-${tsIdx}`}
-                                                onClick={() => {
-                                                    setInstructionSubject(`[${t.tpo.place}] ${combinedTask}`);
-                                                    setInstructionDescription(`${t.tpo.occasion}: ${combinedTask}\n업무 가이드라인에 따라 업무를 수행해 주세요.`);
-                                                    setSelectedInspectionSopId(t.id);
-                                                    // Sync TPO state for sub-items too
-                                                    setNewTpo(t.tpo);
-                                                }}
-                                                style={{
-                                                    padding: '6px 10px 6px 20px',
-                                                    fontSize: '0.85rem',
-                                                    color: colors.primaryBlue,
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    gap: '5px',
-                                                    cursor: 'pointer',
-                                                    transition: 'background-color 0.2s',
-                                                    borderRadius: '4px'
-                                                }}
-                                                onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#F0F7FF'}
-                                                onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                                            >
-                                                <span>↳</span>
-                                                <span style={{ backgroundColor: '#E3F2FD', padding: '2px 8px', borderRadius: '4px', border: `1px solid ${colors.border}`, fontWeight: 'bold' }}>
-                                                    [세분화설정 {tsIdx + 1}] {combinedTask}
-                                                </span>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
+                            <option value="소노벨 천안">소노벨 천안</option>
+                            <option value="소노벨 경주">소노벨 경주</option>
+                        </select>
+                        <select
+                            value={team}
+                            onChange={(e) => setTeam(e.target.value)}
+                            style={{
+                                border: `1px solid ${colors.border}`, borderRadius: '6px',
+                                padding: '6px 12px', fontSize: '0.875rem', fontWeight: 'bold',
+                                color: '#374151', backgroundColor: 'white', cursor: 'pointer'
+                            }}
+                        >
+                            {Object.entries(teams).map(([key, info]) => (
+                                <option key={key} value={key}>{info.label}</option>
                             ))}
-                        {registeredTpos.filter(t => t.job === job).length === 0 && (
-                            <div style={{ color: colors.textGray, padding: '20px', textAlign: 'center' }}>등록된 업무가 없습니다.</div>
-                        )}
+                        </select>
+                        <select
+                            value={activeJobFilter}
+                            onChange={(e) => setActiveJobFilter(e.target.value)}
+                            style={{
+                                border: `1px solid ${colors.border}`, borderRadius: '6px',
+                                padding: '6px 12px', fontSize: '0.875rem',
+                                color: '#374151', backgroundColor: 'white', cursor: 'pointer'
+                            }}
+                        >
+                            <option value="전체">전체 직무</option>
+                            {currentTeamJobs.map(j => (
+                                <option key={j} value={j}>{j}</option>
+                            ))}
+                        </select>
                     </div>
+
+                    <button
+                        onClick={handleBatchDeploy}
+                        style={{
+                            backgroundColor: colors.primaryBlue,
+                            color: 'white', padding: '8px 20px', borderRadius: '8px',
+                            fontWeight: 'bold', fontSize: '0.875rem',
+                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                            border: 'none', cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', gap: '8px',
+                            transition: 'all 0.2s'
+                        }}
+                    >
+                        <Send size={16} />
+                        업무 지시 배포
+                    </button>
                 </div>
 
-                {/* Right: Job Instruction Form */}
-                <div style={{ flex: 1, backgroundColor: 'white', borderRadius: '15px', padding: '25px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', border: `1px solid ${colors.border}` }}>
-                    <div style={{ fontWeight: 'bold', fontSize: '1.2rem', marginBottom: '20px', borderBottom: `2px solid ${colors.border}`, paddingBottom: '10px' }}>업무지시 (Job Order)</div>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                        {/* SITE / TEAM / JOB CONTEXT & TPO PREVIEW */}
-                        <div style={{ backgroundColor: '#F8F9FA', padding: '15px', borderRadius: '10px', display: 'flex', flexDirection: 'column', gap: '10px', border: `1px solid ${colors.border}` }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <div style={{ fontSize: '0.8rem', color: colors.textGray }}>사업장/팀/직무</div>
-                                <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: colors.primaryBlue }}>
-                                    {workplace} · {teams[team]?.label} · {job}
-                                </div>
-                            </div>
-                            <div style={{ padding: '8px 0', borderTop: '1px solid #EEE' }}>
-                                <div style={{ fontSize: '0.8rem', color: colors.textGray, marginBottom: '4px' }}>TPO 설정 현황</div>
-                                <div style={{ fontWeight: 'bold', fontSize: '0.95rem', color: colors.textDark }}>
-                                    {selectedInspectionSopId ? (
-                                        <span style={{ color: colors.primaryBlue }}>[{registeredTpos.find(t => t.id === selectedInspectionSopId)?.tpo.time}] {registeredTpos.find(t => t.id === selectedInspectionSopId)?.tpo.place} · {registeredTpos.find(t => t.id === selectedInspectionSopId)?.tpo.occasion}</span>
-                                    ) : (
-                                        <span style={{ color: colors.textGray, fontWeight: 'normal' }}>업무 리스트에서 항목을 선택해주세요.</span>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-
-                        <div>
-                            <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 'bold', marginBottom: '5px', color: colors.textDark }}>담당자 (Assignee)</label>
-                            <select style={{ width: '100%', padding: '10px', borderRadius: '8px', border: `1px solid ${colors.textDark}`, fontSize: '0.95rem' }}>
-                                <option>김철수 ({job})</option>
-                                <option>이영희 ({job})</option>
-                                <option>박지성 ({job})</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 'bold', marginBottom: '5px', color: colors.textDark }}>지시 상세 (Description)</label>
-                            <textarea
-                                placeholder="구체적인 업무 지시 내용을 입력하세요..."
-                                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: `1px solid ${colors.textDark}`, fontSize: '0.95rem', minHeight: '100px' }}
-                                value={instructionDescription}
-                                onChange={(e) => setInstructionDescription(e.target.value)}
-                                id="instruction-desc"
-                            />
-                        </div>
-
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '5px', position: 'relative' }}>
-                            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.9rem', color: colors.textDark }}>
-                                <input
-                                    type="checkbox"
-                                    checked={shouldRegisterAsStandard}
-                                    onChange={(e) => setShouldRegisterAsStandard(e.target.checked)}
-                                    style={{ width: '16px', height: '16px', cursor: 'pointer' }}
-                                />
-                                업무수행점검 리스트에 추가
-                            </label>
-                            <div
-                                onClick={() => setShowReverseTooltip(!showReverseTooltip)}
-                                style={{
-                                    width: '18px',
-                                    height: '18px',
-                                    borderRadius: '50%',
-                                    backgroundColor: colors.primaryBlue,
-                                    color: 'white',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    fontSize: '0.7rem',
-                                    cursor: 'pointer',
-                                    fontWeight: 'bold'
-                                }}
-                            >
-                                ?
-                            </div>
-
-                            {showReverseTooltip && (
-                                <div style={{
-                                    position: 'absolute',
-                                    bottom: '30px',
-                                    left: '0',
-                                    width: '320px',
-                                    backgroundColor: '#333',
-                                    color: 'white',
-                                    padding: '15px',
-                                    borderRadius: '10px',
-                                    fontSize: '0.8rem',
-                                    zIndex: 10,
-                                    boxShadow: '0 4px 15px rgba(0,0,0,0.3)',
-                                    lineHeight: '1.5'
-                                }}>
-                                    <div style={{ fontWeight: 'bold', marginBottom: '8px', borderBottom: '1px solid #ff4444', paddingBottom: '5px', color: '#ff4444' }}>
-                                        ⚠️ [DEBUG] 중복 등록 이슈 분석
-                                    </div>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                        <div>
-                                            <strong>1. 현상</strong><br />
-                                            리스트에서 항목을 선택한 상태로 '업무수행점검 리스트에 추가'를 하면, 해당 체크리스트가 업무수행점검 탭에 등록됩니다.
-                                        </div>
-                                        <div>
-                                            <strong>2. 원인</strong><br />
-                                            <code>setupTasksToSop</code> 함수의 중복 체크(`includes`)가 단순 전체 문자열 일치만 확인하기 때문. 'A+B' 문자열 안에 'A'가 있는지, 혹은 'A'가 이미 등록된 세트의 일부인지 확인하는 로직 부재.
-                                        </div>
-                                        <div>
-                                            <strong>3. 해결책</strong><br />
-                                            기존 <code>setupTasks</code> 배열을 순회하며, 입력된 작업(Task)들이 이미 등록된 항목 집합의 부분집합(Subset)인지 검사하여 차단하는 로직 추가 필요.
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '10px' }}>
-                            <button
-                                onClick={(e) => {
-                                    e.preventDefault();
-                                    if (!instructionDescription) {
-                                        setTimeout(() => alert('지시 상세 내용을 입력해주세요.'), 0);
-                                        return;
-                                    }
-                                    if (shouldRegisterAsStandard) {
-                                        // If registering to checklist, open structured modal
-                                        setChecklistRegModalOpen(true);
-                                    } else {
-                                        // If not registering, need checklist item selected first
-                                        if (!instructionSubject) {
-                                            setTimeout(() => alert('체크리스트 항목을 먼저 선택해주세요.'), 0);
-                                            return;
-                                        }
-                                        // Go straight to Job Card Preview
-                                        setInstructionModalOpen(true);
-                                    }
-                                }}
-                                type="button"
-                                style={{
-                                    padding: '12px 30px',
-                                    backgroundColor: colors.primaryBlue,
-                                    color: '#ffffff',
-                                    border: 'none',
-                                    borderRadius: '8px',
-                                    fontWeight: 'bold',
-                                    cursor: 'pointer',
-                                    fontSize: '1rem',
-                                    boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
-                                }}
-                            >
-                                직무카드 생성 (Create Job Card)
-                            </button>
-                        </div>
+                {/* Main Split Layout */}
+                <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+                    {/* LEFT: Roster (Source) */}
+                    <div style={{ width: '280px', minWidth: '280px' }}>
+                        <TeamRosterPanel members={teamMembers} jobFilter={activeJobFilter} />
                     </div>
+
+                    {/* RIGHT: Tasks (Target) */}
+                    <TaskTemplateBoard
+                        tasks={activeTasks}
+                        assignments={assignments}
+                        members={teamMembers}
+                        onUnassign={handleUnassign}
+                    />
                 </div>
             </div>
 
-            {/* Checklist Registration Modal */}
-            {checklistRegModalOpen && (
-                <ChecklistRegistrationModal
-                    setModalOpen={setChecklistRegModalOpen}
-                    onRegister={(data) => {
-                        // Update TPO state for JobCardModal display
-                        setNewTpo(data.tpo);
-
-                        // Register the checklist item with TPO and subdivisions
-                        setupTasksToSop(null, data.subdivisions, true, {
-                            category: data.checklistItem,
-                            tpo: data.tpo
-                        });
-                        alert('업무수행점검 리스트에 등록되었습니다.');
-
-                        // Also create job card
-                        setInstructionSubject(data.checklistItem);
-                        const subdivisionsText = data.subdivisions.map(s => s.content).join('\n');
-                        setInstructionDescription(subdivisionsText + '\n업무 가이드라인에 따라 업무를 수행해 주세요.');
-                        setInstructionModalOpen(true);
-                    }}
-                />
-            )}
-        </>
+            {/* Drag Overlay for Visual Feedback */}
+            <DragOverlay dropAnimation={dropAnimation}>
+                {activeDraggable ? (
+                    <div style={{
+                        backgroundColor: 'white', padding: '12px', borderRadius: '12px',
+                        border: `2px solid ${colors.primaryBlue}`, boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
+                        width: '250px', display: 'flex', alignItems: 'center', gap: '12px',
+                        opacity: 0.9, cursor: 'grabbing'
+                    }}>
+                        <div style={{
+                            width: '40px', height: '40px', borderRadius: '50%',
+                            backgroundColor: '#DBEAFE', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            color: colors.primaryBlue, fontWeight: 'bold'
+                        }}>
+                            {activeDraggable.name.charAt(0)}
+                        </div>
+                        <div>
+                            <div style={{ fontWeight: 'bold', color: '#1F2937', fontSize: '0.875rem' }}>{activeDraggable.name}</div>
+                            <div style={{ fontSize: '0.75rem', color: colors.primaryBlue, fontWeight: 'bold' }}>배정 중...</div>
+                        </div>
+                    </div>
+                ) : null}
+            </DragOverlay>
+        </DndContext>
     );
 };
+

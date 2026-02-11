@@ -63,7 +63,27 @@ export const MOCK_ROOMS: Room[] = [
 ];
 
 // PDCA Dashboard Types
-export type Phase = 'plan' | 'do' | 'check' | 'act';
+export type Phase = 'command' | 'plan' | 'do' | 'check' | 'act';
+
+// Command Center: job_instructions DB 테이블 매핑
+export type JobInstructionStatus = 'waiting' | 'in_progress' | 'completed' | 'delayed' | 'non_compliant';
+
+export interface JobInstructionDB {
+    id: number;
+    tpo_id: number | null;
+    task_group_id: number | null;
+    team: string;
+    assignee: string | null;
+    subject: string;
+    description: string | null;
+    status: JobInstructionStatus;
+    evidence_url: string | null;
+    verification_result: 'pass' | 'fail' | null;
+    deadline: string | null;
+    started_at: string | null;
+    completed_at: string | null;
+    created_at: string;
+}
 
 export interface TpoData {
     time: string;
@@ -139,6 +159,24 @@ export interface JobInstruction {
     subject: string;
     description: string;
     deadline: string;
-    status: 'sent' | 'received' | 'in_progress' | 'completed';
+    status: 'sent' | 'received' | 'in_progress' | 'completed' | 'delayed' | 'non_compliant';
     timestamp: string;
+}
+
+// --- NEW TYPES FOR INSTRUCTION BOARD (DnD) ---
+
+export interface TeamMember {
+    id: string;
+    name: string;
+    role: string; // e.g., '리셉션', '지배인'
+    status: 'working' | 'break' | 'off';
+    shift?: string;
+    avatarUrl?: string;
+}
+
+export type TaskStage = 'pre' | 'during' | 'post'; // 업무 전(Preparation), 중(Operation), 후(Closing)
+
+export interface TaskCardData extends RegisteredTpo {
+    stage: TaskStage;
+    assignedMemberIds: string[]; // Temporarily assigned members before deployment
 }

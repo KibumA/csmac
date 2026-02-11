@@ -7,9 +7,10 @@ interface LibraryDetailModalProps {
     data: RegisteredTpo;
     onClose: () => void;
     onAddToBoard: () => void;
+    isDeployed: boolean;
 }
 
-export const LibraryDetailModal: React.FC<LibraryDetailModalProps> = ({ data, onClose, onAddToBoard }) => {
+export const LibraryDetailModal: React.FC<LibraryDetailModalProps> = ({ data, onClose, onAddToBoard, isDeployed }) => {
     const [selectedItemIndex, setSelectedItemIndex] = useState<number>(0);
 
     return (
@@ -181,8 +182,18 @@ export const LibraryDetailModal: React.FC<LibraryDetailModalProps> = ({ data, on
                     >취소</button>
                     <button
                         onClick={onAddToBoard}
-                        style={{ padding: '12px 32px', borderRadius: '10px', border: 'none', backgroundColor: colors.textDark, color: 'white', fontWeight: 'bold', cursor: 'pointer' }}
-                    >우리팀 보드로 가져오기</button>
+                        style={{
+                            padding: '12px 32px',
+                            borderRadius: '10px',
+                            border: 'none',
+                            backgroundColor: isDeployed ? '#E8F5E9' : colors.textDark,
+                            color: isDeployed ? '#2E7D32' : 'white',
+                            fontWeight: 'bold',
+                            cursor: 'pointer'
+                        }}
+                    >
+                        {isDeployed ? '보드에서 제거' : '우리팀 보드로 가져오기'}
+                    </button>
                 </div>
             </div>
         </div>

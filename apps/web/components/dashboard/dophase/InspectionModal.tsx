@@ -5,19 +5,10 @@ import { ChecklistItem } from '@csmac/types';
 
 interface InspectionModalProps {
     setInspectionModalOpen: (open: boolean) => void;
-    // New props for navigation to Instruction Board
-    setInstructionSubject: (subject: string) => void;
-    setInstructionDescription: (desc: string) => void;
-    setNewTpo: (tpo: { time: string; place: string; occasion: string }) => void;
-    setActiveDoSubPhase: (phase: string) => void;
 }
 
 export const InspectionModal: React.FC<InspectionModalProps> = ({
-    setInspectionModalOpen,
-    setInstructionSubject,
-    setInstructionDescription,
-    setNewTpo,
-    setActiveDoSubPhase
+    setInspectionModalOpen
 }) => {
     const { registeredTpos, setupTasksToSop, selectedInspectionSopId } = usePDCA();
     const [selectedItems, setSelectedItems] = useState<ChecklistItem[]>([]);
@@ -49,22 +40,7 @@ export const InspectionModal: React.FC<InspectionModalProps> = ({
         const success = await setupTasksToSop(selectedInspectionSopId, selectedItems);
 
         if (success) {
-            // 2. Prompt for job card creation
-            const shouldCreateJobCard = window.confirm('세분화 설정이 저장되었습니다. 바로 신규 업무지시(직무카드)를 생성하시겠습니까?');
-
-            if (shouldCreateJobCard) {
-                // Set instruction data for smooth transition
-                setInstructionSubject(targetSop.criteria.checklist);
-                setNewTpo(targetSop.tpo);
-                // Instruction description could be a summary of selected items
-                const itemsSummary = selectedItems.map(item => `- ${item.content}`).join('\n');
-                setInstructionDescription(`다음 항목들에 대한 집중 점검이 필요합니다:\n${itemsSummary}`);
-
-                // Navigate to Instruction Board
-                setActiveDoSubPhase('instruction');
-            }
-
-            // Close modal
+            alert('세분화 설정이 저장되었습니다.');
             setInspectionModalOpen(false);
         }
     };

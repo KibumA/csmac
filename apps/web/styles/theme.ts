@@ -9,6 +9,7 @@ export const colors = {
     border: '#D1D1D1',
     white: '#FFFFFF',
     headerBlue: '#CFD9EA', // PPT table header background
+    success: '#22c55e',
 };
 
 export const statCardStyle: React.CSSProperties = {
