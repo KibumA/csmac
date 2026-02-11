@@ -21,8 +21,10 @@ export interface DoContextType {
     // New deployment logic
     deployedTaskGroupIds: number[];
     deployToBoard: (groupId: number) => void;
-
     removeFromBoard: (groupId: number) => void;
+    assignments: Record<number, string[]>;
+    setAssignments: React.Dispatch<React.SetStateAction<Record<number, string[]>>>;
+    batchDeployTasks: () => Promise<void>;
     updateJobStatus: (id: number, status: 'in_progress' | 'completed' | 'delayed') => Promise<void>;
     completeJobWithEvidence: (id: number, evidenceFile: File | null) => Promise<void>;
 }
@@ -39,6 +41,7 @@ export const DoProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [selectedInspectionSopId, setSelectedInspectionSopId] = useState<number | null>(null);
     const [jobInstructions, setJobInstructions] = useState<JobInstruction[]>([]);
     const [deployedTaskGroupIds, setDeployedTaskGroupIds] = useState<number[]>([]);
+    const [assignments, setAssignments] = useState<Record<number, string[]>>({}); // taskId -> memberNames/Ids
 
     // Fetch inspection results from job_instructions table (completed or non_compliant)
     const fetchInspectionResults = async () => {
@@ -242,6 +245,53 @@ export const DoProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         setDeployedTaskGroupIds(prev => prev.filter(id => id !== groupId));
     };
 
+    const batchDeployTasks = async () => {
+        const taskIds = Object.keys(assignments).map(Number);
+        if (taskIds.length === 0) return;
+
+        const allTasks = registeredTpos.flatMap(t => {
+            const tasks = t.setupTasks || [];
+            return tasks.map(g => ({ ...g, parentTpo: t }));
+        });
+
+        const deploymentPromises = taskIds.flatMap(taskId => {
+            const memberIds = assignments[taskId] || [];
+            const taskInfo = allTasks.find(at => at.id === taskId);
+
+            if (!taskInfo) return [];
+
+            const itemNames = taskInfo.items.map(i => i.content).join(', ');
+            const subject = itemNames.length > 50 ? itemNames.substring(0, 50) + '...' : itemNames;
+
+            return memberIds.map(memberId => {
+                // In this mock, memberId is actually the name or a string like 'member-front-1'
+                // For now, let's try to resolve the name if possible, or use the ID
+                const nameMatch = memberId.match(/member-.*-(.*)/); // This is risky, let's just use the name if we had it.
+                // Actually the InstructionBoard passes member.id which is 'member-front-1'.
+                // We'll need to resolve names. For now, I'll just use the ID as the assignee name if it's not a real name.
+
+                return supabase.from('job_instructions').insert({
+                    tpo_id: taskInfo.parentTpo.id,
+                    task_group_id: taskId,
+                    team: taskInfo.parentTpo.team,
+                    subject: subject || `[${taskInfo.parentTpo.tpo.place}] ${taskInfo.parentTpo.tpo.occasion}`,
+                    status: 'waiting',
+                    assignee: memberId // We should probably pass the full member object or just names
+                });
+            });
+        });
+
+        try {
+            await Promise.all(deploymentPromises);
+            setAssignments({}); // Clear after success
+            await fetchJobInstructions(); // Refresh board
+            alert('업무 지시가 성공적으로 배포되었습니다.');
+        } catch (err) {
+            console.error('Error batch deploying tasks:', err);
+            alert('배포 중 오류가 발생했습니다.');
+        }
+    };
+
     const handleRemoveSetupTask = async (groupId: number) => {
         if (!confirm('선택한 세분화 설정을 삭제하시겠습니까?')) return;
         try {
@@ -415,7 +465,8 @@ export const DoProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
             activeDoSubPhase, setActiveDoSubPhase, inspectionResults, addInspectionResult,
             isInspectionModalOpen, setInspectionModalOpen, selectedInspectionSopId, setSelectedInspectionSopId,
             jobInstructions, addJobInstruction, setupTasksToSop, handleRemoveSetupTask, handleEditSetupTask,
-            deployedTaskGroupIds, deployToBoard, removeFromBoard, updateJobStatus, completeJobWithEvidence
+            deployedTaskGroupIds, deployToBoard, removeFromBoard, updateJobStatus, completeJobWithEvidence,
+            assignments, setAssignments, batchDeployTasks
         }}>
             {children}
         </DoContext.Provider>

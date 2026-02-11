@@ -9,17 +9,32 @@ import { colors } from '../../styles/theme';
 import { JobInstruction } from '@csmac/types';
 
 export default function MobilePage() {
-    const { jobInstructions, updateJobStatus, completeJobWithEvidence } = usePDCA();
+    const { jobInstructions, updateJobStatus, completeJobWithEvidence, team } = usePDCA();
+    const [currentUser, setCurrentUser] = useState<string | null>(null);
     const [myTasks, setMyTasks] = useState<JobInstruction[]>([]);
     const [selectedTask, setSelectedTask] = useState<JobInstruction | null>(null);
 
+    // Mock User List for the selected team
+    const MOCK_TEAM_MEMBERS = [
+        '김철수', '이영희', '노현우', '배수진', '오세진', '권도현',
+        '박미숙', '최영미', '서금옥', '김순영', '한옥순',
+        '김태섭', '박진우', '이상호', '최동혁'
+    ];
+
     useEffect(() => {
-        setMyTasks(jobInstructions);
+        // Filter by current user name if selected
+        const filtered = currentUser
+            ? jobInstructions.filter(t => t.assignee === currentUser)
+            : jobInstructions;
+
+        setMyTasks(filtered);
+
         if (selectedTask) {
-            const updated = jobInstructions.find(t => t.id === selectedTask.id);
+            const updated = filtered.find(t => t.id === selectedTask.id);
             if (updated) setSelectedTask(updated);
+            else setSelectedTask(null); // Deselect if no longer in filtered list
         }
-    }, [jobInstructions, selectedTask?.id]);
+    }, [jobInstructions, selectedTask?.id, currentUser]);
 
     const handleCardClick = (task: JobInstruction) => {
         setSelectedTask(task);
@@ -41,8 +56,31 @@ export default function MobilePage() {
     return (
         <MobileLayout title="업무 목록">
             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                {/* User Selector (Mock Login) */}
+                <div style={{
+                    backgroundColor: 'white', padding: '15px', borderRadius: '15px',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.05)', border: `1px solid ${colors.border}`
+                }}>
+                    <div style={{ fontSize: '0.8rem', color: colors.textGray, marginBottom: '8px', fontWeight: 'bold' }}>
+                        로그인 사용자 (시뮬레이션)
+                    </div>
+                    <select
+                        value={currentUser || ''}
+                        onChange={(e) => setCurrentUser(e.target.value || null)}
+                        style={{
+                            width: '100%', padding: '10px', borderRadius: '8px',
+                            border: `1px solid ${colors.border}`, fontSize: '0.95rem'
+                        }}
+                    >
+                        <option value="">사용자 선택 안함 (전체 보기)</option>
+                        {MOCK_TEAM_MEMBERS.map(name => (
+                            <option key={name} value={name}>{name}</option>
+                        ))}
+                    </select>
+                </div>
+
                 <div style={{ fontSize: '0.9rem', fontWeight: 'bold', color: colors.textGray }}>
-                    {new Date().toLocaleDateString()} (오늘)
+                    {new Date().toLocaleDateString()} (오늘) {currentUser && ` - ${currentUser}님의 할 일`}
                 </div>
 
                 {myTasks.length === 0 ? (

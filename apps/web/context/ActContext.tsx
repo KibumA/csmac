@@ -9,6 +9,7 @@ export interface ActContextType {
     actionPlanItems: ActionPlanItem[];
     updateActionPlanItem: (id: number, updates: Partial<ActionPlanItem>) => void;
     addActionPlanItem: (item: Omit<ActionPlanItem, 'id'>) => void;
+    resolveActionItem: (id: number) => Promise<void>;
     stats: {
         totalRecords: number;
         completedCount: number;
@@ -53,6 +54,22 @@ export const ActProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const addActionPlanItem = (item: Omit<ActionPlanItem, 'id'>) => {
         const newId = actionPlanItems.length > 0 ? Math.max(...actionPlanItems.map(a => a.id)) + 1 : 1;
         setActionPlanItems(prev => [...prev, { ...item, id: newId }]);
+    };
+
+    const resolveActionItem = async (id: number) => {
+        try {
+            const { error } = await supabase
+                .from('job_instructions')
+                .update({ status: 'completed', verification_result: 'pass' })
+                .eq('id', id);
+
+            if (error) throw error;
+            await fetchActData(); // Refresh list
+            alert('조치가 완료되었습니다.');
+        } catch (error) {
+            console.error('Error resolving action item:', error);
+            alert('조치 처리 중 오류가 발생했습니다.');
+        }
     };
 
     // Calculate Stats from real DB data
@@ -102,7 +119,7 @@ export const ActProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         <ActContext.Provider value={{
             showConcernPopup, setShowConcernPopup,
             actionPlanItems: activeIssues, // Use real issues
-            updateActionPlanItem, addActionPlanItem, stats,
+            updateActionPlanItem, addActionPlanItem, resolveActionItem, stats,
             allJobs: jobData
         }}>
             {children}

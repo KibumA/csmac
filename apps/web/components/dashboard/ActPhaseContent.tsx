@@ -58,7 +58,7 @@ function StatCardLight({ title, value, label, icon: Icon }: any) {
 }
 
 export default function ActPhaseContent() {
-    const { stats, allJobs, actionPlanItems } = usePDCA();
+    const { stats, allJobs, actionPlanItems, resolveActionItem } = usePDCA();
 
     const [sortKey, setSortKey] = useState<string>('risk');
     const [selectedId, setSelectedId] = useState<string>('');
@@ -420,7 +420,7 @@ export default function ActPhaseContent() {
                                                 피드백
                                             </button>
                                             <button
-                                                onClick={() => showToast(`완료처리: ${item.t}`)}
+                                                onClick={() => resolveActionItem(item.id)}
                                                 style={{
                                                     flex: 1, padding: '6px 0', borderRadius: '4px',
                                                     backgroundColor: colors.primaryBlue, border: 'none',

@@ -153,12 +153,12 @@ export const InstructionBoard = () => {
         workplace, setWorkplace,
         team, setTeam,
         teams,
-        registeredTpos // Source of Tasks
+        registeredTpos,
+        assignments, setAssignments, batchDeployTasks
     } = usePDCA();
 
     // 1. Local State
     const [activeJobFilter, setActiveJobFilter] = useState<string>('전체');
-    const [assignments, setAssignments] = useState<Record<number, string[]>>({}); // taskId -> memberId[]
     const [activeDraggable, setActiveDraggable] = useState<TeamMember | null>(null);
 
     // 2. Computed Data
@@ -171,24 +171,25 @@ export const InstructionBoard = () => {
     // Transform RegisteredTpos to TaskCardData structure with Stages
     // Merge DB data + demo scenarios for pre/post columns
     const activeTasks: TaskCardData[] = useMemo(() => {
+        const registeredTpos = (usePDCA() as any).registeredTpos || []; // Fallback to raw list if byTeam is missing
         const dbTasks = registeredTpos
-            .filter(t => t.team === team)
-            .map(t => ({
+            .filter((t: any) => t.team === team)
+            .map((t: any) => ({
                 ...t,
                 stage: getStageFromTpo(t.tpo.time, t.tpo.occasion),
                 assignedMemberIds: assignments[t.id] || []
             }));
 
         const demoTasks = DEMO_SCENARIOS
-            .filter(t => t.team === team)
-            .map(t => ({
+            .filter((t: any) => t.team === team)
+            .map((t: any) => ({
                 ...t,
                 stage: getStageFromTpo(t.tpo.time, t.tpo.occasion),
                 assignedMemberIds: assignments[t.id] || []
             }));
 
         return [...demoTasks, ...dbTasks];
-    }, [registeredTpos, team, assignments]);
+    }, [team, assignments]);
 
     // 3. DnD Sensors
     const sensors = useSensors(
@@ -238,14 +239,8 @@ export const InstructionBoard = () => {
         }));
     };
 
-    const handleBatchDeploy = () => {
-        const assignedCount = Object.keys(assignments).length;
-        if (assignedCount === 0) {
-            alert('배정된 업무가 없습니다.');
-            return;
-        }
-        alert(`${assignedCount}건의 업무 지시가 실무자에게 배포되었습니다.`);
-        // TODO: Actual DB or Context update logic can go here
+    const handleBatchDeploy = async () => {
+        await batchDeployTasks();
     };
 
     const dropAnimation: DropAnimation = {
