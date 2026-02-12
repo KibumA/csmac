@@ -21,7 +21,15 @@ export default function ActPhaseContent() {
 
     return (
         <div style={{ paddingBottom: '80px' }}>
-            {/* Header / Stats Overlay */}
+            {/* Header section */}
+            <header style={{ marginBottom: '24px' }}>
+                <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: colors.textDark, marginBottom: '8px' }}>
+                    <span style={{ color: colors.primaryBlue }}>Act.</span> TPO 이행 품질 지표 분석 및 피드백
+                </h1>
+                <p style={{ color: '#64748B', fontSize: '1rem' }}>실무자별 성과 지표 분석 및 개선 조치 관리</p>
+            </header>
+
+            {/* Stats Overlay */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '24px' }}>
                 <StatCard
                     icon={<Users size={20} color={colors.primaryBlue} />}
