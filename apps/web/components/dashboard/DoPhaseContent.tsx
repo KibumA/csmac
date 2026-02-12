@@ -38,10 +38,12 @@ const DoPhaseContent = () => {
     return (
         <div style={{ width: '100%', padding: '0 20px 40px 20px' }}>
             {/* 1. Header & Navigation */}
-            <div style={{ marginBottom: '30px' }}>
-                <h1 style={{ fontSize: '2rem', fontWeight: 'bold', color: colors.primaryBlue, marginBottom: '10px' }}>Do Phase: 업무 수행 및 점검</h1>
-                <p style={{ fontSize: '1rem', color: colors.textGray }}>현장의 업무 수행과 실시간 점검을 관리합니다.</p>
-            </div>
+            <header style={{ marginBottom: '24px' }}>
+                <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: colors.textDark, marginBottom: '8px' }}>
+                    <span style={{ color: colors.primaryBlue }}>Do.</span> 업무 수행 및 점검
+                </h1>
+                <p style={{ color: '#64748B', fontSize: '1rem' }}>현장의 업무 수행과 실시간 점검을 관리합니다.</p>
+            </header>
 
             <div style={{ display: 'flex', gap: '10px', marginBottom: '30px', borderBottom: `2px solid ${colors.border}`, paddingBottom: '0' }}>
                 {([

@@ -78,10 +78,11 @@ export default function PlanPhaseContent() {
 
     return (
         <>
-            <header style={{ marginBottom: '30px' }}>
-                <h1 style={{ fontSize: '1.2rem', color: colors.textDark, marginBottom: '8px' }}>
-                    <span style={{ color: colors.primaryBlue, fontWeight: 'bold' }}>Plan.</span> 상황별 업무 점검 기준을 TPO로 설정하면, 업무 생산성이 올라갑니다!
+            <header style={{ marginBottom: '24px' }}>
+                <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: colors.textDark, marginBottom: '8px' }}>
+                    <span style={{ color: colors.primaryBlue }}>Plan.</span> 상황별 업무 점검 기준 설정
                 </h1>
+                <p style={{ color: '#64748B', fontSize: '1rem' }}>TPO로 설정하면, 업무 생산성이 올라갑니다!</p>
             </header>
 
             {/* --- GROUPED SETTINGS SECTION --- */}
