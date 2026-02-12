@@ -212,10 +212,27 @@ export const InstructionBoard = () => {
     }, [instructionBoardTeams, teams]);
 
     const teamMembers = useMemo(() => {
-        if (instructionBoardTeams.includes('전체')) {
-            return Object.values(TEAM_ROSTERS).flat();
-        }
-        return instructionBoardTeams.flatMap(t => TEAM_ROSTERS[t] || []);
+        const rawMembers = instructionBoardTeams.includes('전체')
+            ? Object.values(TEAM_ROSTERS).flat()
+            : instructionBoardTeams.flatMap(t => TEAM_ROSTERS[t] || []);
+
+        return [...rawMembers].sort((a, b) => {
+            // 1. Availability Sort (working first, break/off last)
+            const getPriority = (status: string) => {
+                if (status === 'working') return 0;
+                return 1; // break, off
+            };
+
+            const priorityA = getPriority(a.status);
+            const priorityB = getPriority(b.status);
+
+            if (priorityA !== priorityB) {
+                return priorityA - priorityB;
+            }
+
+            // 2. Alphabetical Sort (가나다 순)
+            return a.name.localeCompare(b.name, 'ko');
+        });
     }, [instructionBoardTeams]);
 
     // Transform RegisteredTpos to TaskCardData structure with Stages
