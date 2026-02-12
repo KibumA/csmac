@@ -70,7 +70,7 @@ export const DoProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
 
     // Instruction Board Filters
     const [instructionBoardWorkplace, setInstructionBoardWorkplace] = useState('소노벨 천안');
-    const [instructionBoardTeams, setInstructionBoardTeams] = useState<string[]>(['프론트']);
+    const [instructionBoardTeams, setInstructionBoardTeams] = useState<string[]>(['전체']);
     const [instructionBoardJobs, setInstructionBoardJobs] = useState<string[]>(['전체']);
 
     // Checklist Board Filters
