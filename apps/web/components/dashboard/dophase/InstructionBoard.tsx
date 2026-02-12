@@ -248,16 +248,28 @@ export const InstructionBoard = () => {
             isTeamMatch(t.team) &&
             isJobMatch(t.job);
 
-        const mapTask = (t: RegisteredTpo) => ({
+        // 1. Demo Scenarios (Pre/Post stages)
+        const demoTasks = DEMO_SCENARIOS.filter(filterTask).map(t => ({
             ...t,
             stage: getStageFromTpo(t.tpo.time, t.tpo.occasion),
             assignedMemberIds: assignments[t.id] || []
+        }));
+
+        // 2. Real Registered TPOs (Operation stage)
+        // Flatten by setupTasks to match Library - only refined tasks appear on the board
+        const realTasks = registeredTpos.filter(filterTask).flatMap(tpo => {
+            if (!tpo.setupTasks || tpo.setupTasks.length === 0) return [];
+
+            return tpo.setupTasks.map(group => ({
+                ...tpo,
+                id: group.id, // Use the setupTask (combination) ID for assignments
+                stage: getStageFromTpo(tpo.tpo.time, tpo.tpo.occasion),
+                displayItems: group.items,
+                assignedMemberIds: assignments[group.id] || []
+            }));
         });
 
-        return [
-            ...DEMO_SCENARIOS.filter(filterTask).map(mapTask),
-            ...registeredTpos.filter(filterTask).map(mapTask)
-        ];
+        return [...demoTasks, ...realTasks];
     }, [instructionBoardWorkplace, instructionBoardTeams, instructionBoardJobs, assignments, registeredTpos]);
 
     // 3. DnD Sensors
