@@ -154,7 +154,11 @@ export const InstructionBoard = () => {
     const {
         registeredTpos,
         teams,
-        assignments, setAssignments, batchDeployTasks,
+        jobInstructions,
+        deployedTaskGroupIds,
+        assignMemberToTask,
+        unassignMemberFromTask,
+        batchDeployTasks,
         instructionBoardWorkplace, setInstructionBoardWorkplace,
         instructionBoardTeams, setInstructionBoardTeams,
         instructionBoardJobs, setInstructionBoardJobs
@@ -252,25 +256,28 @@ export const InstructionBoard = () => {
         const demoTasks = DEMO_SCENARIOS.filter(filterTask).map(t => ({
             ...t,
             stage: getStageFromTpo(t.tpo.time, t.tpo.occasion),
-            assignedMemberIds: assignments[t.id] || []
+            assignedMemberIds: []
         }));
 
-        // 2. Real Registered TPOs (Operation stage)
-        // Flatten by setupTasks to match Library - only refined tasks appear on the board
+        // 2. Real Deployed Tasks (Operation stage)
         const realTasks = registeredTpos.filter(filterTask).flatMap(tpo => {
             if (!tpo.setupTasks || tpo.setupTasks.length === 0) return [];
 
-            return tpo.setupTasks.map(group => ({
-                ...tpo,
-                id: group.id, // Use the setupTask (combination) ID for assignments
-                stage: getStageFromTpo(tpo.tpo.time, tpo.tpo.occasion),
-                displayItems: group.items,
-                assignedMemberIds: assignments[group.id] || []
-            }));
+            return tpo.setupTasks
+                .filter(group => deployedTaskGroupIds.includes(group.id))
+                .map(group => ({
+                    ...tpo,
+                    id: group.id,
+                    stage: getStageFromTpo(tpo.tpo.time, tpo.tpo.occasion),
+                    displayItems: group.items,
+                    assignedMemberIds: jobInstructions
+                        .filter(job => job.taskGroupId === group.id && job.assignee !== null)
+                        .map(job => job.assignee!)
+                }));
         });
 
         return [...demoTasks, ...realTasks];
-    }, [instructionBoardWorkplace, instructionBoardTeams, instructionBoardJobs, assignments, registeredTpos]);
+    }, [instructionBoardWorkplace, instructionBoardTeams, instructionBoardJobs, jobInstructions, registeredTpos, deployedTaskGroupIds]);
 
     // 3. DnD Sensors
     const sensors = useSensors(
@@ -315,25 +322,15 @@ export const InstructionBoard = () => {
                     return;
                 }
 
-                // Update assignment
-                setAssignments(prev => {
-                    const currentAssignees = prev[taskId] || [];
-                    if (currentAssignees.includes(memberId)) return prev; // Already assigned
-                    return {
-                        ...prev,
-                        [taskId]: [...currentAssignees, memberId]
-                    };
-                });
+                // Persist assignment to DB in real-time
+                assignMemberToTask(taskId, memberId);
             }
         }
-    }, [activeTasks, setAssignments]);
+    }, [activeTasks, assignMemberToTask, addToast]);
 
     const handleUnassign = React.useCallback((taskId: number, memberId: string) => {
-        setAssignments(prev => ({
-            ...prev,
-            [taskId]: (prev[taskId] || []).filter(id => id !== memberId)
-        }));
-    }, [setAssignments]);
+        unassignMemberFromTask(taskId, memberId);
+    }, [unassignMemberFromTask]);
 
     const handleViewDetail = React.useCallback((task: TaskCardData) => {
         setSelectedTask(task);
@@ -515,7 +512,7 @@ export const InstructionBoard = () => {
                     {/* RIGHT: Tasks (Target) */}
                     <TaskTemplateBoard
                         tasks={activeTasks}
-                        assignments={assignments}
+                        assignments={{}} // Not used anymore as assignees are integrated into tasks
                         members={teamMembers}
                         onUnassign={handleUnassign}
                         onViewDetail={handleViewDetail}

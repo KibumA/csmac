@@ -24,6 +24,8 @@ export interface DoContextType {
     deployedTaskGroupIds: number[];
     deployToBoard: (groupId: number) => void;
     removeFromBoard: (groupId: number) => void;
+    assignMemberToTask: (taskGroupId: number, memberId: string) => Promise<void>;
+    unassignMemberFromTask: (taskGroupId: number, memberId: string) => Promise<void>;
     assignments: Record<number, string[]>;
     setAssignments: React.Dispatch<React.SetStateAction<Record<number, string[]>>>;
     batchDeployTasks: () => Promise<void>;
@@ -165,11 +167,15 @@ export const DoProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     // Fetch job instructions for Job Card Board
     const fetchJobInstructions = React.useCallback(async () => {
         try {
-            const { data, error } = await supabase
+            let query = supabase
                 .from('job_instructions')
-                .select('*')
-                .eq('team', team)
-                .order('created_at', { ascending: false });
+                .select('*');
+
+            if (team !== '전체') {
+                query = query.eq('team', team);
+            }
+
+            const { data, error } = await query.order('created_at', { ascending: false });
 
             if (error) {
                 console.error('Error fetching job instructions:', error);
@@ -276,6 +282,84 @@ export const DoProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
             await fetchJobInstructions(); // Refresh
         } catch (err) {
             console.error('Error deleting job_instruction:', err);
+        }
+    }, [fetchJobInstructions]);
+
+    const assignMemberToTask = React.useCallback(async (groupId: number, memberId: string) => {
+        try {
+            // 1. Find an unassigned row for this groupId
+            const { data: unassigned } = await supabase
+                .from('job_instructions')
+                .select('*')
+                .eq('task_group_id', groupId)
+                .is('assignee', null)
+                .limit(1);
+
+            if (unassigned && unassigned.length > 0) {
+                // Update the unassigned row
+                await supabase
+                    .from('job_instructions')
+                    .update({ assignee: memberId })
+                    .eq('id', unassigned[0].id);
+            } else {
+                // No unassigned row, fetch task info and insert a new row
+                const { data: existing } = await supabase
+                    .from('job_instructions')
+                    .select('*')
+                    .eq('task_group_id', groupId)
+                    .limit(1);
+
+                if (existing && existing.length > 0) {
+                    const template = existing[0];
+                    await supabase.from('job_instructions').insert({
+                        tpo_id: template.tpo_id,
+                        task_group_id: template.task_group_id,
+                        team: template.team,
+                        subject: template.subject,
+                        status: 'waiting',
+                        assignee: memberId
+                    });
+                }
+            }
+            await fetchJobInstructions();
+        } catch (err) {
+            console.error('Error in assignMemberToTask:', err);
+        }
+    }, [fetchJobInstructions]);
+
+    const unassignMemberFromTask = React.useCallback(async (groupId: number, memberId: string) => {
+        try {
+            // 1. Find the row for this member
+            const { data: memberJobs } = await supabase
+                .from('job_instructions')
+                .select('*')
+                .eq('task_group_id', groupId)
+                .eq('assignee', memberId);
+
+            if (memberJobs && memberJobs.length > 0) {
+                const { data: allJobs } = await supabase
+                    .from('job_instructions')
+                    .select('*')
+                    .eq('task_group_id', groupId);
+
+                if (allJobs && allJobs.length === 1) {
+                    // This is the only member, just make it unassigned instead of deleting row
+                    // (To keep the card deployed on the board)
+                    await supabase
+                        .from('job_instructions')
+                        .update({ assignee: null })
+                        .eq('id', allJobs[0].id);
+                } else {
+                    // Delete this member's row
+                    await supabase
+                        .from('job_instructions')
+                        .delete()
+                        .eq('id', memberJobs[0].id);
+                }
+            }
+            await fetchJobInstructions();
+        } catch (err) {
+            console.error('Error in unassignMemberFromTask:', err);
         }
     }, [fetchJobInstructions]);
 
@@ -493,6 +577,7 @@ export const DoProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         isInspectionModalOpen, setInspectionModalOpen, selectedInspectionSopId, setSelectedInspectionSopId,
         jobInstructions, addJobInstruction, setupTasksToSop, handleRemoveSetupTask, handleEditSetupTask,
         deployedTaskGroupIds, deployToBoard, removeFromBoard, updateJobStatus, completeJobWithEvidence,
+        assignMemberToTask, unassignMemberFromTask,
         assignments, setAssignments, batchDeployTasks,
         instructionBoardWorkplace, setInstructionBoardWorkplace,
         instructionBoardTeams, setInstructionBoardTeams,
@@ -507,6 +592,7 @@ export const DoProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     }), [activeDoSubPhase, inspectionResults, addInspectionResult, isInspectionModalOpen, selectedInspectionSopId,
         jobInstructions, addJobInstruction, setupTasksToSop, handleRemoveSetupTask, handleEditSetupTask,
         deployedTaskGroupIds, deployToBoard, removeFromBoard, updateJobStatus, completeJobWithEvidence,
+        assignMemberToTask, unassignMemberFromTask,
         assignments, batchDeployTasks,
         instructionBoardWorkplace, instructionBoardTeams, instructionBoardJobs,
         checklistSearchQuery, checklistSelectedTeams,
