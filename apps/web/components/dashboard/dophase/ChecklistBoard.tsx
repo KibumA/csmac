@@ -38,21 +38,19 @@ export const ChecklistBoard: React.FC<ChecklistBoardProps> = ({
         registeredTpos,
         teams,
         selectedInspectionSopId,
-        searchQuery,
-        setSearchQuery,
+        checklistSearchQuery,
+        setChecklistSearchQuery,
+        checklistSelectedTeams,
+        setChecklistSelectedTeams,
         handleRemoveSetupTask,
         handleEditSetupTask
     } = usePDCA();
 
-    // Filter logic: Team + Search Query
-    // Local State for Multi-filter
-    const [selectedTeams, setSelectedTeams] = useState<string[]>(['전체']);
-
     const toggleTeam = (tName: string) => {
         if (tName === '전체') {
-            setSelectedTeams(['전체']);
+            setChecklistSelectedTeams(['전체']);
         } else {
-            setSelectedTeams(prev => {
+            setChecklistSelectedTeams(prev => {
                 const isAllSelected = prev.includes('전체');
                 const filtered = isAllSelected ? [] : prev;
 
@@ -68,11 +66,11 @@ export const ChecklistBoard: React.FC<ChecklistBoardProps> = ({
 
     // Filter logic: Team + Search Query
     const filteredTpos = registeredTpos.filter(t => {
-        const matchesTeam = selectedTeams.includes('전체') || selectedTeams.includes(t.team);
+        const matchesTeam = checklistSelectedTeams.includes('전체') || checklistSelectedTeams.includes(t.team);
         if (!matchesTeam) return false;
 
-        if (!searchQuery) return true;
-        const query = searchQuery.toLowerCase();
+        if (!checklistSearchQuery) return true;
+        const query = checklistSearchQuery.toLowerCase();
         return (
             t.criteria.checklist.toLowerCase().includes(query) ||
             t.tpo.place.toLowerCase().includes(query) ||
@@ -148,8 +146,8 @@ export const ChecklistBoard: React.FC<ChecklistBoardProps> = ({
                     <input
                         type="text"
                         placeholder="업무수행 점검 상황을 검색해 보세요"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
+                        value={checklistSearchQuery}
+                        onChange={(e) => setChecklistSearchQuery(e.target.value)}
                         style={{
                             width: '100%',
                             padding: '12px 20px 12px 45px',
@@ -169,8 +167,8 @@ export const ChecklistBoard: React.FC<ChecklistBoardProps> = ({
                         onClick={() => toggleTeam('전체')}
                         style={{
                             padding: '8px 16px',
-                            backgroundColor: selectedTeams.includes('전체') ? colors.primaryBlue : '#F3F4F6',
-                            color: selectedTeams.includes('전체') ? 'white' : colors.textDark,
+                            backgroundColor: checklistSelectedTeams.includes('전체') ? colors.primaryBlue : '#F3F4F6',
+                            color: checklistSelectedTeams.includes('전체') ? 'white' : colors.textDark,
                             borderRadius: '20px',
                             fontSize: '0.85rem',
                             fontWeight: 'bold',
@@ -186,8 +184,8 @@ export const ChecklistBoard: React.FC<ChecklistBoardProps> = ({
                             onClick={() => toggleTeam(tName)}
                             style={{
                                 padding: '8px 16px',
-                                backgroundColor: selectedTeams.includes(tName) ? colors.primaryBlue : '#F3F4F6',
-                                color: selectedTeams.includes(tName) ? 'white' : colors.textDark,
+                                backgroundColor: checklistSelectedTeams.includes(tName) ? colors.primaryBlue : '#F3F4F6',
+                                color: checklistSelectedTeams.includes(tName) ? 'white' : colors.textDark,
                                 borderRadius: '20px',
                                 fontSize: '0.85rem',
                                 fontWeight: 'bold',

@@ -36,6 +36,11 @@ export interface DoContextType {
     setInstructionBoardTeams: React.Dispatch<React.SetStateAction<string[]>>;
     instructionBoardJobs: string[];
     setInstructionBoardJobs: React.Dispatch<React.SetStateAction<string[]>>;
+    // Checklist Board Filter Persistence
+    checklistSearchQuery: string;
+    setChecklistSearchQuery: (v: string) => void;
+    checklistSelectedTeams: string[];
+    setChecklistSelectedTeams: React.Dispatch<React.SetStateAction<string[]>>;
 }
 
 const DoContext = createContext<DoContextType | undefined>(undefined);
@@ -56,6 +61,32 @@ export const DoProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [instructionBoardWorkplace, setInstructionBoardWorkplace] = useState('소노벨 천안');
     const [instructionBoardTeams, setInstructionBoardTeams] = useState<string[]>(['프론트']);
     const [instructionBoardJobs, setInstructionBoardJobs] = useState<string[]>(['전체']);
+
+    // Checklist Board Filters
+    const [checklistSearchQuery, setChecklistSearchQuery] = useState('');
+    const [checklistSelectedTeams, setChecklistSelectedTeams] = useState<string[]>(['전체']);
+
+    // Persistence for Checklist Filters
+    React.useEffect(() => {
+        const savedQuery = localStorage.getItem('checklist_search_query');
+        const savedTeams = localStorage.getItem('checklist_selected_teams');
+        if (savedQuery) setChecklistSearchQuery(savedQuery);
+        if (savedTeams) {
+            try {
+                setChecklistSelectedTeams(JSON.parse(savedTeams));
+            } catch (e) {
+                console.error('Error parsing saved teams:', e);
+            }
+        }
+    }, []);
+
+    React.useEffect(() => {
+        localStorage.setItem('checklist_search_query', checklistSearchQuery);
+    }, [checklistSearchQuery]);
+
+    React.useEffect(() => {
+        localStorage.setItem('checklist_selected_teams', JSON.stringify(checklistSelectedTeams));
+    }, [checklistSelectedTeams]);
 
     const deployedTaskGroupIds = React.useMemo(() => {
         return Array.from(new Set(
@@ -436,12 +467,15 @@ export const DoProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         assignments, setAssignments, batchDeployTasks,
         instructionBoardWorkplace, setInstructionBoardWorkplace,
         instructionBoardTeams, setInstructionBoardTeams,
-        instructionBoardJobs, setInstructionBoardJobs
+        instructionBoardJobs, setInstructionBoardJobs,
+        checklistSearchQuery, setChecklistSearchQuery,
+        checklistSelectedTeams, setChecklistSelectedTeams
     }), [activeDoSubPhase, inspectionResults, addInspectionResult, isInspectionModalOpen, selectedInspectionSopId,
         jobInstructions, addJobInstruction, setupTasksToSop, handleRemoveSetupTask, handleEditSetupTask,
         deployedTaskGroupIds, deployToBoard, removeFromBoard, updateJobStatus, completeJobWithEvidence,
         assignments, batchDeployTasks,
-        instructionBoardWorkplace, instructionBoardTeams, instructionBoardJobs]);
+        instructionBoardWorkplace, instructionBoardTeams, instructionBoardJobs,
+        checklistSearchQuery, checklistSelectedTeams]);
 
     return (
         <DoContext.Provider value={value}>
