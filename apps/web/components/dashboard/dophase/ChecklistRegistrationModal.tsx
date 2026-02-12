@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { usePDCA } from '../../../context/PDCAContext';
+import { useToast } from '../../../context/ToastContext';
 import { colors, selectStyle } from '../../../styles/theme';
 import { ChecklistItem } from '@csmac/types';
 
@@ -19,6 +20,7 @@ export const ChecklistRegistrationModal: React.FC<ChecklistRegistrationModalProp
     initialChecklistItem = ''
 }) => {
     const { tpoOptions, registeredTpos, workplace, team, job } = usePDCA();
+    const { addToast } = useToast();
 
     const [tpo, setTpo] = useState({ time: '', place: '', occasion: '' });
     const [selectedItems, setSelectedItems] = useState<ChecklistItem[]>([]);
@@ -43,11 +45,11 @@ export const ChecklistRegistrationModal: React.FC<ChecklistRegistrationModalProp
 
     const handleRegister = () => {
         if (!tpo.place || !tpo.time || !tpo.occasion) {
-            setTimeout(() => alert('모든 TPO 항목을 선택해주세요.'), 0);
+            addToast('모든 TPO 항목을 선택해주세요.', 'warning');
             return;
         }
         if (selectedItems.length === 0) {
-            setTimeout(() => alert('세분화 항목을 1개 이상 선택해주세요.'), 0);
+            addToast('세분화 항목을 1개 이상 선택해주세요.', 'warning');
             return;
         }
 

@@ -6,12 +6,12 @@ export const TEAMS: TeamsMapping = {
     '시설': { label: '시설', jobs: ['엔지니어', '환경관리'] },
     '고객지원/CS': { label: '고객지원/CS', jobs: ['컨택센터 상담원', '고객서비스팀', 'CS파트'] },
     '마케팅/영업': { label: '마케팅/영업', jobs: ['마케팅전략팀', '영업기획'] },
-    '경영/HR': { label: '경영/HR', jobs: ['교육개발팀', '인사(HRD)', '상황실 관리자'] },
+    '경영/HR': { label: '경영/HR', jobs: ['교육개발팀', '인사(HRD)', '업무지시 보드 관리자'] },
 };
 
 export const TPO_OPTIONS = {
-    time: ['업무중', '업무전', '업무후', '영업후'],
-    place: ['객실', '로비', '레스토랑/라운지', '주차장', '복도/E/V', '창고/린넨실', '기계실/상황실'],
+    time: ['업무전', '업무중', '업무후', '영업후'],
+    place: ['객실', '로비', '레스토랑/라운지', '주차장', '복도/E/V', '창고/린넨실', '기계실/업무지시 보드'],
     occasion: [
         '인스펙션 실행',
         '객실 정비/세팅',
@@ -30,7 +30,7 @@ export const PLACE_OCCASION_MAPPING: Record<string, string[]> = {
     '주차장': ['시설/안전 점검', '컴플레인/VOC 처리'],
     '복도/E/V': ['시설/안전 점검', '컴플레인/VOC 처리'],
     '창고/린넨실': ['물품 전달/불출', '시설/안전 점검'],
-    '기계실/상황실': ['시설/안전 점검', '컴플레인/VOC 처리', '영업 준비/마감']
+    '기계실/업무지시 보드': ['시설/안전 점검', '컴플레인/VOC 처리', '영업 준비/마감']
 };
 
 export const CRITERIA_OPTIONS: Record<string, CriteriaData> = {
@@ -176,7 +176,7 @@ export const CRITERIA_OPTIONS: Record<string, CriteriaData> = {
             { content: '조명 밝기 및 통로 확보 상태' }
         ]
     },
-    '기계실/상황실|시설/안전 점검': {
+    '기계실/업무지시 보드|시설/안전 점검': {
         checklist: '핵심 설비 및 시스템이 정상 작동 중인가?',
         items: [
             { content: '냉난방기 압력 및 온도 체크' },
@@ -186,7 +186,7 @@ export const CRITERIA_OPTIONS: Record<string, CriteriaData> = {
             { content: '시스템 오류 로그 확인 및 보고' }
         ]
     },
-    '기계실/상황실|영업 준비/마감': {
+    '기계실/업무지시 보드|영업 준비/마감': {
         checklist: '설비 시스템 교대 및 마감 점검이 완료되었는가?',
         items: [
             { content: '인수인계 일지 기록 상태' },
@@ -195,7 +195,7 @@ export const CRITERIA_OPTIONS: Record<string, CriteriaData> = {
             { content: '제어실 출입 통제 장치 작동 여부' }
         ]
     },
-    '기계실/상황실|컴플레인/VOC 처리': {
+    '기계실/업무지시 보드|컴플레인/VOC 처리': {
         checklist: '기술적 불편 사항이 신속히 대응되었는가?',
         items: [
             { content: '객실 온도 조절 원격 대응 속도' },

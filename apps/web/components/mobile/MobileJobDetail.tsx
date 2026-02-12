@@ -69,13 +69,36 @@ export const MobileJobDetail: React.FC<MobileJobDetailProps> = ({ task, onClose,
                 <div style={{ marginBottom: '25px' }}>
                     <span style={{
                         padding: '6px 12px', borderRadius: '20px',
-                        backgroundColor: task.status === 'completed' ? '#dcfce7' : (task.status === 'in_progress' ? '#dbeafe' : '#f1f5f9'),
-                        color: task.status === 'completed' ? colors.success : (task.status === 'in_progress' ? colors.primaryBlue : colors.textGray),
+                        backgroundColor: task.status === 'completed' ? '#dcfce7' :
+                            task.status === 'in_progress' ? '#dbeafe' :
+                                task.status === 'non_compliant' ? '#fee2e2' : '#f1f5f9',
+                        color: task.status === 'completed' ? colors.success :
+                            task.status === 'in_progress' ? colors.primaryBlue :
+                                task.status === 'non_compliant' ? colors.error : colors.textGray,
                         fontWeight: 'bold', fontSize: '0.9rem'
                     }}>
-                        {task.status === 'completed' ? '✅ 완료됨' : (task.status === 'in_progress' ? '⚡ 진행중' : '⏳ 대기중')}
+                        {task.status === 'completed' ? '✅ 완료됨' :
+                            task.status === 'in_progress' ? '⚡ 진행중' :
+                                task.status === 'non_compliant' ? '🚨 보완필요' : '⏳ 대기중'}
                     </span>
                 </div>
+
+                {/* Feedback Section */}
+                {(task.feedbackComment || task.aiScore) && (
+                    <div style={{ marginBottom: '20px', border: `1px solid ${colors.error}`, padding: '15px', borderRadius: '10px', backgroundColor: '#fff1f2' }}>
+                        <h3 style={{ fontSize: '0.95rem', fontWeight: 'bold', color: '#991b1b', marginTop: 0, marginBottom: '10px' }}>매니저 피드백 / AI 분석</h3>
+                        {task.aiScore && (
+                            <div style={{ marginBottom: '8px', fontSize: '0.9rem' }}>
+                                <span style={{ fontWeight: 'bold' }}>AI 신뢰도 점수:</span> {task.aiScore}%
+                            </div>
+                        )}
+                        {task.feedbackComment && (
+                            <p style={{ margin: 0, lineHeight: '1.6', color: '#7f1d1d', fontWeight: 500 }}>
+                                {task.feedbackComment}
+                            </p>
+                        )}
+                    </div>
+                )}
 
                 {/* Description */}
                 <div style={{ marginBottom: '20px', backgroundColor: '#F8F9FA', padding: '15px', borderRadius: '10px' }}>

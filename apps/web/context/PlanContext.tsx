@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { supabase } from '../utils/supabaseClient';
 import { useCommon } from './CommonContext';
+import { useToast } from './ToastContext';
 import { TpoData, CriteriaData, MatchingData, RegisteredTpo, ChecklistItem } from '@csmac/types';
 import { CRITERIA_OPTIONS } from '../constants/pdca-data';
 
@@ -26,12 +27,14 @@ export interface PlanContextType {
     removeChecklistItem: (index: number) => void;
     updateChecklistItemImage: (index: number, file: File | null, url?: string) => void;
     setSelectedCriteria: React.Dispatch<React.SetStateAction<CriteriaData>>;
+    isSubmitting: boolean;
 }
 
 const PlanContext = createContext<PlanContextType | undefined>(undefined);
 
 export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const { workplace, team, job, registeredTpos, setRegisteredTpos, fetchTpos } = useCommon();
+    const { addToast } = useToast();
     const [selectedTpo, setSelectedTpo] = useState<TpoData>({ time: '', place: '', occasion: '' });
     const [selectedCriteria, setSelectedCriteria] = useState<CriteriaData>({ checklist: '', items: [] });
     const [selectedMatching, setSelectedMatching] = useState<MatchingData>({ evidence: '', method: '', elements: [] });
@@ -40,14 +43,16 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const [activeDropdown, setActiveDropdown] = useState<any>(null);
     const [searchQuery, setSearchQuery] = useState('');
 
-    const handleReset = () => {
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const handleReset = React.useCallback(() => {
         setSelectedTpo({ time: '', place: '', occasion: '' });
         setSelectedCriteria({ checklist: '', items: [] });
         setSelectedMatching({ evidence: '', method: '', elements: [] });
         setIsEditing(null);
-    };
+    }, []);
 
-    const uploadChecklistImage = async (file: File, tpoId: number, itemIndex: number): Promise<string | null> => {
+    const uploadChecklistImage = React.useCallback(async (file: File, tpoId: number, itemIndex: number): Promise<string | null> => {
         try {
             const fileExt = file.name.split('.').pop();
             const fileName = `${tpoId}_${itemIndex}_${Date.now()}.${fileExt}`;
@@ -68,18 +73,21 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             console.error('Error uploading image:', err);
             return null;
         }
-    };
+    }, []);
 
-    const handleRegister = async () => {
+    const handleRegister = React.useCallback(async () => {
+        if (isSubmitting) return;
+
         if (!selectedTpo.place || !selectedTpo.occasion) {
-            setTimeout(() => alert('TPO(장소/상황)를 모두 선택해 주세요.'), 0);
+            addToast('TPO(장소/상황)를 모두 선택해 주세요.', 'warning');
             return;
         }
         if (selectedCriteria.items.length === 0) {
-            setTimeout(() => alert('체크리스트 항목을 최소 1개 이상 추가해 주세요.'), 0);
+            addToast('체크리스트 항목을 최소 1개 이상 추가해 주세요.', 'warning');
             return;
         }
 
+        setIsSubmitting(true);
         try {
             if (isEditing !== null) {
                 await supabase.from('tpo').update({
@@ -103,12 +111,16 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 }));
                 await supabase.from('checklist_items').insert(itemsToInsert);
                 setIsEditing(null);
-                setTimeout(() => alert('수정이 완료되었습니다.'), 0);
+                addToast('수정이 완료되었습니다.', 'success');
             } else {
                 const { data: newTpo, error: tpoError } = await supabase.from('tpo').insert({
                     workplace, team, job,
-                    tpo_time: selectedTpo.time, tpo_place: selectedTpo.place, tpo_occasion: selectedTpo.occasion,
-                    matching_evidence: selectedMatching.evidence, matching_method: selectedMatching.method, matching_elements: selectedMatching.elements || []
+                    tpo_time: selectedTpo.time,
+                    tpo_place: selectedTpo.place,
+                    tpo_occasion: selectedTpo.occasion,
+                    matching_evidence: selectedMatching.evidence,
+                    matching_method: selectedMatching.method,
+                    matching_elements: selectedMatching.elements || []
                 }).select().single();
                 if (tpoError) throw tpoError;
 
@@ -121,30 +133,32 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                     return { tpo_id: newTpo.id, content: item.content, sequence_order: idx, reference_image_url: imageUrl || null };
                 }));
                 await supabase.from('checklist_items').insert(itemsPayload);
-                setTimeout(() => alert(`${job} 직무의 TPO가 등록되었습니다.`), 0);
+                addToast(`${job} 직무의 TPO가 등록되었습니다.`, 'success');
             }
             await fetchTpos();
+            handleReset();
         } catch (err) {
             console.error('Error registering TPO:', err);
-            setTimeout(() => alert('저장 중 오류가 발생했습니다.'), 0);
+            addToast('저장 중 오류가 발생했습니다.', 'error');
+        } finally {
+            setIsSubmitting(false);
         }
-        handleReset();
-    };
+    }, [selectedTpo, selectedCriteria, selectedMatching, isEditing, workplace, team, job, uploadChecklistImage, fetchTpos, handleReset, addToast, isSubmitting]);
 
-    const handleRemoveRegistered = async (id: number) => {
+    const handleRemoveRegistered = React.useCallback(async (id: number) => {
         try {
             const { error } = await supabase.from('tpo').delete().eq('id', id);
             if (error) throw error;
             setRegisteredTpos(prev => prev.filter(item => item.id !== id));
             if (isEditing === id) setIsEditing(null);
-            setTimeout(() => alert('삭제되었습니다.'), 0);
+            addToast('삭제되었습니다.', 'info');
         } catch (err) {
             console.error('Error deleting TPO:', err);
-            setTimeout(() => alert('삭제 중 오류가 발생했습니다.'), 0);
+            addToast('삭제 중 오류가 발생했습니다.', 'error');
         }
-    };
+    }, [isEditing, setRegisteredTpos, addToast]);
 
-    const handleEdit = (id: number) => {
+    const handleEdit = React.useCallback((id: number) => {
         const itemToEdit = registeredTpos.find(item => item.id === id);
         if (itemToEdit) {
             setIsEditing(id);
@@ -156,9 +170,9 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             setSelectedMatching({ ...itemToEdit.matching });
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
-    };
+    }, [registeredTpos]);
 
-    const handleTpoSelect = (category: 'time' | 'place' | 'occasion', value: string) => {
+    const handleTpoSelect = React.useCallback((category: 'time' | 'place' | 'occasion', value: string) => {
         setSelectedTpo(prev => {
             const newTpo = { ...prev, [category]: value };
             const key = `${newTpo.place}|${newTpo.occasion}`;
@@ -173,9 +187,9 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             return newTpo;
         });
         setActiveDropdown(null);
-    };
+    }, []);
 
-    const handleCriteriaSelect = (type: 'checklist' | 'criteriaItems', value: string) => {
+    const handleCriteriaSelect = React.useCallback((type: 'checklist' | 'criteriaItems', value: string) => {
         if (type === 'checklist') {
             setSelectedCriteria(prev => ({ ...prev, checklist: value }));
             setActiveDropdown(null);
@@ -188,9 +202,9 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 return { ...prev, items: newItems };
             });
         }
-    };
+    }, []);
 
-    const handleMatchingSelect = (type: 'evidence' | 'method' | 'elements', value: string) => {
+    const handleMatchingSelect = React.useCallback((type: 'evidence' | 'method' | 'elements', value: string) => {
         if (type === 'elements') {
             setSelectedMatching(prev => {
                 const elements = prev.elements || [];
@@ -201,32 +215,36 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             setSelectedMatching(prev => ({ ...prev, [type]: value }));
             setActiveDropdown(null);
         }
-    };
+    }, []);
 
-    const addChecklistItem = (item: string) => {
+    const addChecklistItem = React.useCallback((item: string) => {
         if (item.trim()) {
             setSelectedCriteria(prev => ({ ...prev, items: [...prev.items, { content: item.trim() }] }));
         }
-    };
+    }, []);
 
-    const removeChecklistItem = (index: number) => {
+    const removeChecklistItem = React.useCallback((index: number) => {
         setSelectedCriteria(prev => ({ ...prev, items: prev.items.filter((_, i) => i !== index) }));
-    };
+    }, []);
 
-    const updateChecklistItemImage = (index: number, file: File | null, url?: string) => {
+    const updateChecklistItemImage = React.useCallback((index: number, file: File | null, url?: string) => {
         setSelectedCriteria(prev => ({
             ...prev,
             items: prev.items.map((item, i) => i === index ? { ...item, imageFile: file || undefined, imageUrl: url } : item)
         }));
-    };
+    }, []);
+
+    const value = React.useMemo(() => ({
+        selectedTpo, selectedCriteria, selectedMatching, isEditing, showTpoTooltip, setShowTpoTooltip,
+        activeDropdown, setActiveDropdown, searchQuery, setSearchQuery, handleRegister, handleReset,
+        handleRemoveRegistered, handleEdit, handleTpoSelect, handleCriteriaSelect, handleMatchingSelect,
+        addChecklistItem, removeChecklistItem, updateChecklistItemImage, setSelectedCriteria, isSubmitting
+    }), [selectedTpo, selectedCriteria, selectedMatching, isEditing, showTpoTooltip, activeDropdown, searchQuery,
+        handleRegister, handleReset, handleRemoveRegistered, handleEdit, handleTpoSelect, handleCriteriaSelect,
+        handleMatchingSelect, addChecklistItem, removeChecklistItem, updateChecklistItemImage, isSubmitting]);
 
     return (
-        <PlanContext.Provider value={{
-            selectedTpo, selectedCriteria, selectedMatching, isEditing, showTpoTooltip, setShowTpoTooltip,
-            activeDropdown, setActiveDropdown, searchQuery, setSearchQuery, handleRegister, handleReset,
-            handleRemoveRegistered, handleEdit, handleTpoSelect, handleCriteriaSelect, handleMatchingSelect,
-            addChecklistItem, removeChecklistItem, updateChecklistItemImage, setSelectedCriteria
-        }}>
+        <PlanContext.Provider value={value}>
             {children}
         </PlanContext.Provider>
     );

@@ -36,7 +36,6 @@ export const ChecklistBoard: React.FC<ChecklistBoardProps> = ({
 }) => {
     const {
         registeredTpos,
-        team,
         teams,
         selectedInspectionSopId,
         searchQuery,
@@ -46,8 +45,32 @@ export const ChecklistBoard: React.FC<ChecklistBoardProps> = ({
     } = usePDCA();
 
     // Filter logic: Team + Search Query
+    // Local State for Multi-filter
+    const [selectedTeams, setSelectedTeams] = useState<string[]>(['전체']);
+
+    const toggleTeam = (tName: string) => {
+        if (tName === '전체') {
+            setSelectedTeams(['전체']);
+        } else {
+            setSelectedTeams(prev => {
+                const isAllSelected = prev.includes('전체');
+                const filtered = isAllSelected ? [] : prev;
+
+                if (filtered.includes(tName)) {
+                    const next = filtered.filter(t => t !== tName);
+                    return next.length === 0 ? ['전체'] : next;
+                } else {
+                    return [...filtered, tName];
+                }
+            });
+        }
+    };
+
+    // Filter logic: Team + Search Query
     const filteredTpos = registeredTpos.filter(t => {
-        if (t.team !== team) return false;
+        const matchesTeam = selectedTeams.includes('전체') || selectedTeams.includes(t.team);
+        if (!matchesTeam) return false;
+
         if (!searchQuery) return true;
         const query = searchQuery.toLowerCase();
         return (
@@ -62,7 +85,7 @@ export const ChecklistBoard: React.FC<ChecklistBoardProps> = ({
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                 <div style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <h2 style={{ fontSize: '1.4rem', fontWeight: 'bold', color: colors.textDark }}>객실팀 업무수행 점검리스트</h2>
+                    <h2 style={{ fontSize: '1.4rem', fontWeight: 'bold', color: colors.textDark }}>업무수행 점검리스트</h2>
                     {/* Tooltip Question Mark */}
                     <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                         <div
@@ -140,28 +163,39 @@ export const ChecklistBoard: React.FC<ChecklistBoardProps> = ({
                     <div style={{ position: 'absolute', left: '18px', top: '50%', transform: 'translateY(-50%)', fontSize: '1.1rem', color: colors.textGray }}>🔍</div>
                 </div>
 
-                {/* Filter Tags (Right Aligned) */}
+                {/* Filter Tags (Right Aligned) - Team Filter */}
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                    {[
-                        { label: '마감업무', id: 1 },
-                        { label: '인스펙션', id: 2 },
-                        { label: '린넨물 관리', id: 3 }
-                    ].map(tag => (
-                        <div key={tag.id} style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px',
+                    <div
+                        onClick={() => toggleTeam('전체')}
+                        style={{
                             padding: '8px 16px',
-                            backgroundColor: '#F3F4F6',
-                            border: 'none',
+                            backgroundColor: selectedTeams.includes('전체') ? colors.primaryBlue : '#F3F4F6',
+                            color: selectedTeams.includes('전체') ? 'white' : colors.textDark,
                             borderRadius: '20px',
                             fontSize: '0.85rem',
                             fontWeight: 'bold',
-                            color: colors.textDark,
                             cursor: 'pointer',
-                            transition: 'background-color 0.2s'
-                        }}>
-                            {tag.label} <span style={{ fontSize: '0.8rem', color: colors.textGray }}>✕</span>
+                            transition: 'all 0.2s'
+                        }}
+                    >
+                        전체
+                    </div>
+                    {Object.keys(teams).map(tName => (
+                        <div
+                            key={tName}
+                            onClick={() => toggleTeam(tName)}
+                            style={{
+                                padding: '8px 16px',
+                                backgroundColor: selectedTeams.includes(tName) ? colors.primaryBlue : '#F3F4F6',
+                                color: selectedTeams.includes(tName) ? 'white' : colors.textDark,
+                                borderRadius: '20px',
+                                fontSize: '0.85rem',
+                                fontWeight: 'bold',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s'
+                            }}
+                        >
+                            {teams[tName].label}
                         </div>
                     ))}
                 </div>

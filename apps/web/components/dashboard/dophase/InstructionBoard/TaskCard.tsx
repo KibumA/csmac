@@ -8,9 +8,10 @@ interface TaskCardProps {
     task: TaskCardData;
     assignedMembers: TeamMember[];
     onUnassign: (taskId: number, memberId: string) => void;
+    onViewDetail: (task: TaskCardData) => void;
 }
 
-export const TaskCard: React.FC<TaskCardProps> = ({ task, assignedMembers, onUnassign }) => {
+export const TaskCard: React.FC<TaskCardProps> = ({ task, assignedMembers, onUnassign, onViewDetail }) => {
     const { isOver, setNodeRef } = useDroppable({
         id: `task-${task.id}`,
         data: { type: 'task', task }
@@ -31,7 +32,10 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, assignedMembers, onUna
             }}
         >
             {/* Header */}
-            <div style={{ padding: '16px', borderBottom: `1px solid ${colors.border}` }}>
+            <div
+                onClick={() => onViewDetail(task)}
+                style={{ padding: '16px', borderBottom: `1px solid ${colors.border}`, cursor: 'pointer' }}
+            >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
                     <span style={{
                         backgroundColor: '#EFF6FF', // blue-50

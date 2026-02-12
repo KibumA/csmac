@@ -6,7 +6,7 @@ import { User, Coffee, Home, GripVertical } from 'lucide-react';
 
 interface TeamRosterPanelProps {
     members: TeamMember[];
-    jobFilter: string;
+    jobFilter: string[];
 }
 
 const DraggableMemberCard = ({ member }: { member: TeamMember }) => {
@@ -99,7 +99,7 @@ const DraggableMemberCard = ({ member }: { member: TeamMember }) => {
 
 export const TeamRosterPanel: React.FC<TeamRosterPanelProps> = ({ members, jobFilter }) => {
     // Filter logic: If '전체' or match role
-    const filteredMembers = members.filter(m => jobFilter === '전체' || m.role === jobFilter);
+    const filteredMembers = members.filter(m => jobFilter.includes('전체') || jobFilter.includes(m.role));
     const onlineCount = filteredMembers.filter(m => m.status === 'working').length;
 
     return (

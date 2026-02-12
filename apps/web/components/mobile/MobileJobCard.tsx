@@ -13,6 +13,7 @@ export const MobileJobCard: React.FC<MobileJobCardProps> = ({ task, onClick }) =
             case 'completed': return colors.success;
             case 'in_progress': return colors.primaryBlue;
             case 'delayed': return '#ea580c';
+            case 'non_compliant': return colors.error;
             default: return '#ddd';
         }
     };
@@ -22,6 +23,7 @@ export const MobileJobCard: React.FC<MobileJobCardProps> = ({ task, onClick }) =
             case 'completed': return '완료됨';
             case 'in_progress': return '진행중';
             case 'delayed': return '지연됨';
+            case 'non_compliant': return '보완필요';
             default: return '대기중';
         }
     };
@@ -80,6 +82,16 @@ export const MobileJobCard: React.FC<MobileJobCardProps> = ({ task, onClick }) =
             }}>
                 {task.description}
             </p>
+
+            {task.feedbackComment && (
+                <div style={{
+                    marginTop: '10px', padding: '8px 12px', backgroundColor: '#fff1f2',
+                    borderRadius: '8px', borderLeft: `3px solid ${colors.error}`,
+                    fontSize: '0.85rem', color: '#991b1b'
+                }}>
+                    <strong>매니저 피드백:</strong> {task.feedbackComment}
+                </div>
+            )}
 
             <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem', color: colors.textGray }}>
                 <span>{new Date(task.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>

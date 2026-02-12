@@ -9,9 +9,10 @@ interface TaskTemplateBoardProps {
     assignments: Record<number, string[]>; // taskId -> memberId[]
     members: TeamMember[];
     onUnassign: (taskId: number, memberId: string) => void;
+    onViewDetail: (task: TaskCardData) => void;
 }
 
-export const TaskTemplateBoard: React.FC<TaskTemplateBoardProps> = ({ tasks, assignments, members, onUnassign }) => {
+export const TaskTemplateBoard: React.FC<TaskTemplateBoardProps> = ({ tasks, assignments, members, onUnassign, onViewDetail }) => {
     const stages: TaskStage[] = ['pre', 'during', 'post'];
 
     return (
@@ -67,6 +68,7 @@ export const TaskTemplateBoard: React.FC<TaskTemplateBoardProps> = ({ tasks, ass
                                             task={task}
                                             assignedMembers={assignedMembers}
                                             onUnassign={onUnassign}
+                                            onViewDetail={onViewDetail}
                                         />
                                     );
                                 })}

@@ -2,7 +2,9 @@ import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { supabase } from '../utils/supabaseClient';
 import { useCommon } from './CommonContext';
 import { usePlan } from './PlanContext';
-import { InspectionRecord, JobInstruction, ChecklistItem, TpoData } from '@csmac/types';
+import { useToast } from './ToastContext';
+import { InspectionRecord, JobInstruction, ChecklistItem, TpoData, JobInstructionDB } from '@csmac/types';
+import { mapDbToJobInstruction, mapDbToInspectionRecord } from '../utils/instructionUtils';
 
 export interface DoContextType {
     activeDoSubPhase: string;
@@ -27,6 +29,13 @@ export interface DoContextType {
     batchDeployTasks: () => Promise<void>;
     updateJobStatus: (id: number, status: 'in_progress' | 'completed' | 'delayed') => Promise<void>;
     completeJobWithEvidence: (id: number, evidenceFile: File | null) => Promise<void>;
+    // Instruction Board Filter Persistence
+    instructionBoardWorkplace: string;
+    setInstructionBoardWorkplace: (v: string) => void;
+    instructionBoardTeams: string[];
+    setInstructionBoardTeams: React.Dispatch<React.SetStateAction<string[]>>;
+    instructionBoardJobs: string[];
+    setInstructionBoardJobs: React.Dispatch<React.SetStateAction<string[]>>;
 }
 
 const DoContext = createContext<DoContextType | undefined>(undefined);
@@ -34,17 +43,30 @@ const DoContext = createContext<DoContextType | undefined>(undefined);
 export const DoProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const { workplace, team, job, registeredTpos, setRegisteredTpos, fetchTpos } = useCommon();
     const { setSelectedCriteria } = usePlan();
+    const { addToast } = useToast();
 
     const [activeDoSubPhase, setActiveDoSubPhase] = useState('checklist');
     const [inspectionResults, setInspectionResults] = useState<InspectionRecord[]>([]);
     const [isInspectionModalOpen, setInspectionModalOpen] = useState(false);
     const [selectedInspectionSopId, setSelectedInspectionSopId] = useState<number | null>(null);
     const [jobInstructions, setJobInstructions] = useState<JobInstruction[]>([]);
-    const [deployedTaskGroupIds, setDeployedTaskGroupIds] = useState<number[]>([]);
     const [assignments, setAssignments] = useState<Record<number, string[]>>({}); // taskId -> memberNames/Ids
 
+    // Instruction Board Filters
+    const [instructionBoardWorkplace, setInstructionBoardWorkplace] = useState('소노벨 천안');
+    const [instructionBoardTeams, setInstructionBoardTeams] = useState<string[]>(['프론트']);
+    const [instructionBoardJobs, setInstructionBoardJobs] = useState<string[]>(['전체']);
+
+    const deployedTaskGroupIds = React.useMemo(() => {
+        return Array.from(new Set(
+            jobInstructions
+                .filter(job => (job.status === 'waiting' || job.status === 'in_progress') && job.taskGroupId !== null)
+                .map(job => Number(job.taskGroupId))
+        ));
+    }, [jobInstructions]);
+
     // Fetch inspection results from job_instructions table (completed or non_compliant)
-    const fetchInspectionResults = async () => {
+    const fetchInspectionResults = React.useCallback(async () => {
         try {
             const { data, error } = await supabase
                 .from('job_instructions')
@@ -59,38 +81,13 @@ export const DoProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
             }
 
             if (data) {
-                const mappedResults: InspectionRecord[] = data.map((item: any) => {
-                    const status = item.status === 'completed' ? 'O' : 'X';
-                    // Parse deadline or completed_at for time
-                    const timeStr = item.completed_at ? new Date(item.completed_at).toLocaleString('ko-KR', {
-                        year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'
-                    }) : new Date().toLocaleString('ko-KR');
-
-                    // Extract area from subject/description or default
-                    const areaMatch = item.subject.match(/\[(.*?)\]/);
-                    const area = areaMatch ? areaMatch[1] : (item.description?.substring(0, 10) || '현장');
-
-                    // Extract item/issue from subject
-                    const workItem = item.subject.replace(/\[.*?\]\s*/, '');
-
-                    return {
-                        id: item.id,
-                        time: timeStr,
-                        name: item.assignee || '담당자', // Fallback if null
-                        area: area,
-                        item: workItem,
-                        status: status,
-                        role: item.team, // Use team as role for now
-                        reason: item.description, // Use description as reason/detail
-                        tpoId: item.tpo_id || 0
-                    };
-                });
+                const mappedResults: InspectionRecord[] = (data as JobInstructionDB[]).map(item => mapDbToInspectionRecord(item));
                 setInspectionResults(mappedResults);
             }
         } catch (err) {
             console.error('Unexpected error fetching inspection results:', err);
         }
-    };
+    }, [team]);
 
     // Fetch on mount and when team changes
     React.useEffect(() => {
@@ -106,7 +103,7 @@ export const DoProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     };
 
     // Fetch job instructions for Job Card Board
-    const fetchJobInstructions = async () => {
+    const fetchJobInstructions = React.useCallback(async () => {
         try {
             const { data, error } = await supabase
                 .from('job_instructions')
@@ -120,30 +117,19 @@ export const DoProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
             }
 
             if (data) {
-                const mappedInstructions: JobInstruction[] = data.map((item: any) => ({
-                    id: item.id,
-                    targetTeam: item.team,
-                    assignee: item.assignee || '담당자',
-                    subject: item.subject,
-                    description: item.description || '',
-                    deadline: item.deadline || '',
-                    status: item.status === 'waiting' ? 'sent' :
-                        item.status === 'in_progress' ? 'in_progress' :
-                            item.status === 'completed' ? 'completed' : 'sent', // Map DB status to UI status
-                    timestamp: item.created_at
-                }));
+                const mappedInstructions: JobInstruction[] = (data as JobInstructionDB[]).map(item => mapDbToJobInstruction(item));
                 setJobInstructions(mappedInstructions);
             }
         } catch (err) {
             console.error('Unexpected error fetching job instructions:', err);
         }
-    };
+    }, [team]);
 
     React.useEffect(() => {
         fetchJobInstructions();
     }, []);
 
-    const addJobInstruction = async (instruction: Omit<JobInstruction, 'id'>) => {
+    const addJobInstruction = React.useCallback(async (instruction: Omit<JobInstruction, 'id'>) => {
         try {
             // Ensure deadline is in ISO format for DB
             let safeDeadline = null;
@@ -173,30 +159,20 @@ export const DoProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
 
             if (error) {
                 console.error('Error adding job instruction:', error);
-                alert('직무카드 생성 중 오류가 발생했습니다.');
+                addToast('직무카드 생성 중 오류가 발생했습니다.', 'error');
                 return;
             }
 
             if (data && data.length > 0) {
-                const newItem = data[0];
-                const newInstruction: JobInstruction = {
-                    id: newItem.id,
-                    targetTeam: newItem.team,
-                    assignee: newItem.assignee || '담당자',
-                    subject: newItem.subject,
-                    description: newItem.description || '',
-                    deadline: newItem.deadline || '',
-                    status: 'sent',
-                    timestamp: newItem.created_at
-                };
+                const newInstruction = mapDbToJobInstruction(data[0] as JobInstructionDB);
                 setJobInstructions(prev => [newInstruction, ...prev]);
             }
         } catch (err) {
             console.error('Unexpected error adding job instruction:', err);
         }
-    };
+    }, []);
 
-    const deployToBoard = async (groupId: number) => {
+    const deployToBoard = React.useCallback(async (groupId: number) => {
         if (deployedTaskGroupIds.includes(groupId)) return;
 
         // Find the TPO and task group info for this groupId
@@ -227,25 +203,23 @@ export const DoProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
                 subject,
                 status: 'waiting',
             });
+            await fetchJobInstructions(); // Refresh to update derived deployedTaskGroupIds
         } catch (err) {
             console.error('Error inserting job_instruction:', err);
         }
+    }, [registeredTpos, team, fetchJobInstructions]);
 
-        setDeployedTaskGroupIds(prev => [...prev, groupId]);
-    };
-
-    const removeFromBoard = async (groupId: number) => {
+    const removeFromBoard = React.useCallback(async (groupId: number) => {
         // DELETE from Supabase
         try {
             await supabase.from('job_instructions').delete().eq('task_group_id', groupId);
+            await fetchJobInstructions(); // Refresh
         } catch (err) {
             console.error('Error deleting job_instruction:', err);
         }
+    }, [fetchJobInstructions]);
 
-        setDeployedTaskGroupIds(prev => prev.filter(id => id !== groupId));
-    };
-
-    const batchDeployTasks = async () => {
+    const batchDeployTasks = React.useCallback(async () => {
         const taskIds = Object.keys(assignments).map(Number);
         if (taskIds.length === 0) return;
 
@@ -264,19 +238,13 @@ export const DoProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
             const subject = itemNames.length > 50 ? itemNames.substring(0, 50) + '...' : itemNames;
 
             return memberIds.map(memberId => {
-                // In this mock, memberId is actually the name or a string like 'member-front-1'
-                // For now, let's try to resolve the name if possible, or use the ID
-                const nameMatch = memberId.match(/member-.*-(.*)/); // This is risky, let's just use the name if we had it.
-                // Actually the InstructionBoard passes member.id which is 'member-front-1'.
-                // We'll need to resolve names. For now, I'll just use the ID as the assignee name if it's not a real name.
-
                 return supabase.from('job_instructions').insert({
                     tpo_id: taskInfo.parentTpo.id,
                     task_group_id: taskId,
                     team: taskInfo.parentTpo.team,
                     subject: subject || `[${taskInfo.parentTpo.tpo.place}] ${taskInfo.parentTpo.tpo.occasion}`,
                     status: 'waiting',
-                    assignee: memberId // We should probably pass the full member object or just names
+                    assignee: memberId
                 });
             });
         });
@@ -285,27 +253,27 @@ export const DoProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
             await Promise.all(deploymentPromises);
             setAssignments({}); // Clear after success
             await fetchJobInstructions(); // Refresh board
-            alert('업무 지시가 성공적으로 배포되었습니다.');
+            addToast('업무 지시가 성공적으로 배포되었습니다.', 'success');
         } catch (err) {
             console.error('Error batch deploying tasks:', err);
-            alert('배포 중 오류가 발생했습니다.');
+            addToast('배포 중 오류가 발생했습니다.', 'error');
         }
-    };
+    }, [assignments, registeredTpos, fetchJobInstructions, addToast]);
 
-    const handleRemoveSetupTask = async (groupId: number) => {
+    const handleRemoveSetupTask = React.useCallback(async (groupId: number) => {
         if (!confirm('선택한 세분화 설정을 삭제하시겠습니까?')) return;
         try {
             await supabase.from('task_groups').delete().eq('id', groupId);
             setRegisteredTpos(prev => prev.map(tpo => tpo.setupTasks ? { ...tpo, setupTasks: tpo.setupTasks.filter(g => g.id !== groupId) } : tpo));
             // Also remove from board if it was deployed
-            setDeployedTaskGroupIds(prev => prev.filter(id => id !== groupId));
-            setTimeout(() => alert('삭제되었습니다.'), 0);
+            await fetchJobInstructions(); // Refresh will naturally update derived deployedTaskGroupIds
+            addToast('삭제되었습니다.', 'info');
         } catch (err) {
             console.error('Error removing setup task group:', err);
         }
-    };
+    }, [setRegisteredTpos, addToast, fetchJobInstructions]);
 
-    const handleEditSetupTask = (tpoId: number, groupId: number) => {
+    const handleEditSetupTask = React.useCallback((tpoId: number, groupId: number) => {
         const tpo = registeredTpos.find(t => t.id === tpoId);
         if (!tpo || !tpo.setupTasks) return;
         const group = tpo.setupTasks.find(g => g.id === groupId);
@@ -313,9 +281,9 @@ export const DoProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         setSelectedCriteria({ checklist: tpo.criteria.checklist, items: group.items.map(item => ({ ...item })) });
         setSelectedInspectionSopId(tpoId);
         setInspectionModalOpen(true);
-    };
+    }, [registeredTpos, setSelectedCriteria, setSelectedInspectionSopId, setInspectionModalOpen]);
 
-    const setupTasksToSop = async (sopId: number | null, tasks: ChecklistItem[], isManual?: boolean, newSopInfo?: { category: string, tpo: TpoData }): Promise<boolean> => {
+    const setupTasksToSop = React.useCallback(async (sopId: number | null, tasks: ChecklistItem[], isManual?: boolean, newSopInfo?: { category: string, tpo: TpoData }): Promise<boolean> => {
         try {
             if (sopId !== null) {
                 // Duplicate check: Verify if this combination already exists for this TPO
@@ -329,14 +297,14 @@ export const DoProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
                     });
 
                     if (isDuplicate) {
-                        alert('이미 동일한 항목 구성으로 세분화 설정이 등록되어 있습니다.');
+                        addToast('이미 동일한 항목 구성으로 세분화 설정이 등록되어 있습니다.', 'warning');
                         return false;
                     }
                 }
 
                 const { data: groupData, error: groupError } = await supabase.from('task_groups').insert({ tpo_id: sopId, group_name: `설정 ${Date.now()}` }).select().single();
                 if (groupError) throw groupError;
-                const junctionItems = tasks.filter((t: any) => t.id).map((item: any) => ({ group_id: groupData.id, checklist_item_id: item.id }));
+                const junctionItems = tasks.filter((t: ChecklistItem) => t.id).map((item: ChecklistItem) => ({ group_id: groupData.id, checklist_item_id: item.id }));
                 if (junctionItems.length > 0) await supabase.from('task_group_items').insert(junctionItems);
                 setRegisteredTpos(prev => prev.map(t => t.id === sopId ? { ...t, setupTasks: [...(t.setupTasks || []), { id: groupData.id, items: tasks }] } : t));
                 return true;
@@ -358,11 +326,11 @@ export const DoProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
             console.error('Error in setupTasksToSop:', err);
             return false;
         }
-    };
+    }, [registeredTpos, workplace, team, job, setRegisteredTpos, fetchTpos, addToast]);
 
-    const updateJobStatus = async (id: number, status: 'in_progress' | 'completed' | 'delayed') => {
+    const updateJobStatus = React.useCallback(async (id: number, status: 'in_progress' | 'completed' | 'delayed') => {
         try {
-            const updates: any = { status };
+            const updates: Partial<JobInstructionDB> = { status };
             const now = new Date().toISOString();
 
             if (status === 'in_progress') {
@@ -378,7 +346,7 @@ export const DoProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
 
             if (error) {
                 console.error('Error updating job status:', error);
-                alert('상태 업데이트 중 오류가 발생했습니다.');
+                addToast('상태 업데이트 중 오류가 발생했습니다.', 'error');
                 return;
             }
 
@@ -390,9 +358,9 @@ export const DoProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         } catch (err) {
             console.error('Unexpected error updating job status:', err);
         }
-    };
+    }, []);
 
-    const uploadEvidence = async (file: File): Promise<string | null> => {
+    const uploadEvidence = React.useCallback(async (file: File): Promise<string | null> => {
         try {
             const fileExt = file.name.split('.').pop();
             const fileName = `${Math.random()}.${fileExt}`;
@@ -416,20 +384,20 @@ export const DoProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
             console.error('Error in uploadEvidence:', error);
             return null;
         }
-    };
+    }, []);
 
-    const completeJobWithEvidence = async (id: number, evidenceFile: File | null) => {
+    const completeJobWithEvidence = React.useCallback(async (id: number, evidenceFile: File | null) => {
         let evidenceUrl = null;
         if (evidenceFile) {
             evidenceUrl = await uploadEvidence(evidenceFile);
             if (!evidenceUrl) {
-                alert('사진 업로드에 실패했습니다. 다시 시도해주세요.');
+                addToast('사진 업로드에 실패했습니다. 다시 시도해주세요.', 'error');
                 return;
             }
         }
 
         try {
-            const updates: any = {
+            const updates: Partial<JobInstructionDB> = {
                 status: 'completed',
                 completed_at: new Date().toISOString()
             };
@@ -446,7 +414,7 @@ export const DoProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
 
             if (error) {
                 console.error('Error completing job:', error);
-                alert('완료 처리 중 오류가 발생했습니다.');
+                addToast('완료 처리 중 오류가 발생했습니다.', 'error');
                 return;
             }
 
@@ -458,16 +426,25 @@ export const DoProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         } catch (err) {
             console.error('Unexpected error completing job:', err);
         }
-    };
+    }, [uploadEvidence, addToast]);
+
+    const value = React.useMemo(() => ({
+        activeDoSubPhase, setActiveDoSubPhase, inspectionResults, addInspectionResult,
+        isInspectionModalOpen, setInspectionModalOpen, selectedInspectionSopId, setSelectedInspectionSopId,
+        jobInstructions, addJobInstruction, setupTasksToSop, handleRemoveSetupTask, handleEditSetupTask,
+        deployedTaskGroupIds, deployToBoard, removeFromBoard, updateJobStatus, completeJobWithEvidence,
+        assignments, setAssignments, batchDeployTasks,
+        instructionBoardWorkplace, setInstructionBoardWorkplace,
+        instructionBoardTeams, setInstructionBoardTeams,
+        instructionBoardJobs, setInstructionBoardJobs
+    }), [activeDoSubPhase, inspectionResults, addInspectionResult, isInspectionModalOpen, selectedInspectionSopId,
+        jobInstructions, addJobInstruction, setupTasksToSop, handleRemoveSetupTask, handleEditSetupTask,
+        deployedTaskGroupIds, deployToBoard, removeFromBoard, updateJobStatus, completeJobWithEvidence,
+        assignments, batchDeployTasks,
+        instructionBoardWorkplace, instructionBoardTeams, instructionBoardJobs]);
 
     return (
-        <DoContext.Provider value={{
-            activeDoSubPhase, setActiveDoSubPhase, inspectionResults, addInspectionResult,
-            isInspectionModalOpen, setInspectionModalOpen, selectedInspectionSopId, setSelectedInspectionSopId,
-            jobInstructions, addJobInstruction, setupTasksToSop, handleRemoveSetupTask, handleEditSetupTask,
-            deployedTaskGroupIds, deployToBoard, removeFromBoard, updateJobStatus, completeJobWithEvidence,
-            assignments, setAssignments, batchDeployTasks
-        }}>
+        <DoContext.Provider value={value}>
             {children}
         </DoContext.Provider>
     );

@@ -6,11 +6,12 @@ import { getCheckPoints } from '../../../utils/libraryUtils';
 interface LibraryDetailModalProps {
     data: RegisteredTpo;
     onClose: () => void;
-    onAddToBoard: () => void;
-    isDeployed: boolean;
+    onAddToBoard?: () => void;
+    isDeployed?: boolean;
+    hideActionButton?: boolean;
 }
 
-export const LibraryDetailModal: React.FC<LibraryDetailModalProps> = ({ data, onClose, onAddToBoard, isDeployed }) => {
+export const LibraryDetailModal: React.FC<LibraryDetailModalProps> = ({ data, onClose, onAddToBoard, isDeployed, hideActionButton }) => {
     const [selectedItemIndex, setSelectedItemIndex] = useState<number>(0);
 
     return (
@@ -73,10 +74,10 @@ export const LibraryDetailModal: React.FC<LibraryDetailModalProps> = ({ data, on
                     }}>
                         <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', color: colors.textDark }}>세부 점검 리스트</h3>
-                            <span style={{ fontSize: '0.85rem', color: colors.primaryBlue, fontWeight: 'bold' }}>{data.criteria.items.length}개 항목</span>
+                            <span style={{ fontSize: '0.85rem', color: colors.primaryBlue, fontWeight: 'bold' }}>{((data as any).displayItems || data.criteria.items).length}개 항목</span>
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                            {data.criteria.items.map((item, idx) => (
+                            {((data as any).displayItems || data.criteria.items).map((item: any, idx: number) => (
                                 <div
                                     key={idx}
                                     onClick={() => setSelectedItemIndex(idx)}
@@ -124,14 +125,14 @@ export const LibraryDetailModal: React.FC<LibraryDetailModalProps> = ({ data, on
                     <div style={{ flex: 1, padding: '32px', display: 'flex', flexDirection: 'column', backgroundColor: '#FAFAFA', overflowY: 'auto' }}>
                         <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', color: colors.textDark, marginBottom: '20px' }}>준수 사항 상세</h3>
 
-                        {data.criteria.items[selectedItemIndex] ? (
+                        {((data as any).displayItems || data.criteria.items)[selectedItemIndex] ? (
                             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '24px' }}>
 
 
                                 <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: '16px', border: `1px solid ${colors.border}` }}>
                                     <div style={{ fontSize: '0.9rem', color: colors.textGray, marginBottom: '15px' }}>핵심 점검 포인트 (집중 관리)</div>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                                        {getCheckPoints(data.criteria.items[selectedItemIndex].content).map((point, pIdx) => (
+                                        {getCheckPoints(((data as any).displayItems || data.criteria.items)[selectedItemIndex].content).map((point, pIdx) => (
                                             <div key={pIdx} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
                                                 <div style={{
                                                     marginTop: '4px',
@@ -180,20 +181,22 @@ export const LibraryDetailModal: React.FC<LibraryDetailModalProps> = ({ data, on
                         onClick={onClose}
                         style={{ padding: '12px 24px', borderRadius: '10px', border: `1px solid ${colors.border}`, backgroundColor: 'white', fontWeight: 'bold', cursor: 'pointer' }}
                     >취소</button>
-                    <button
-                        onClick={onAddToBoard}
-                        style={{
-                            padding: '12px 32px',
-                            borderRadius: '10px',
-                            border: 'none',
-                            backgroundColor: isDeployed ? '#E8F5E9' : colors.textDark,
-                            color: isDeployed ? '#2E7D32' : 'white',
-                            fontWeight: 'bold',
-                            cursor: 'pointer'
-                        }}
-                    >
-                        {isDeployed ? '보드에서 제거' : '우리팀 보드로 가져오기'}
-                    </button>
+                    {!hideActionButton && onAddToBoard && (
+                        <button
+                            onClick={onAddToBoard}
+                            style={{
+                                padding: '12px 32px',
+                                borderRadius: '10px',
+                                border: 'none',
+                                backgroundColor: isDeployed ? '#E8F5E9' : colors.textDark,
+                                color: isDeployed ? '#2E7D32' : 'white',
+                                fontWeight: 'bold',
+                                cursor: 'pointer'
+                            }}
+                        >
+                            {isDeployed ? '보드에서 제거' : '우리팀 보드로'}
+                        </button>
+                    )}
                 </div>
             </div>
         </div>

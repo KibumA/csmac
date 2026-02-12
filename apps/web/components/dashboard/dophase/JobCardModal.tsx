@@ -1,5 +1,6 @@
 import React from 'react';
 import { usePDCA } from '../../../context/PDCAContext';
+import { useToast } from '../../../context/ToastContext';
 import { colors, selectStyle } from '../../../styles/theme';
 import { ChecklistItem } from '@csmac/types';
 
@@ -40,6 +41,7 @@ export const JobCardModal: React.FC<JobCardModalProps> = ({
         selectedInspectionSopId,
         registeredTpos // Get access to registered TPOs
     } = usePDCA();
+    const { addToast } = useToast();
 
     // ROBUST TPO LOOKUP:
     // If an SOP ID is selected, get the definitive TPO from context.
@@ -106,12 +108,14 @@ export const JobCardModal: React.FC<JobCardModalProps> = ({
                     onClick={() => {
                         addJobInstruction({
                             targetTeam: team,
+                            team: team,
                             assignee: `담당자 (${job})`,
                             subject: instructionSubject,
                             description: instructionDescription,
                             deadline: new Date().toISOString(),
-                            status: 'sent',
-                            timestamp: new Date().toISOString()
+                            status: 'waiting',
+                            timestamp: new Date().toISOString(),
+                            created_at: new Date().toISOString()
                         });
 
                         // Reverse Registration Logic - already configured in TPO modal
@@ -121,9 +125,9 @@ export const JobCardModal: React.FC<JobCardModalProps> = ({
                             } else {
                                 setupTasksToSop(null, [{ content: instructionSubject }], true, { category: newSopCategory, tpo: newTpo });
                             }
-                            alert('직무카드가 실무자에게 전송되었으며, 업무수행점검 리스트에 등록되었습니다.');
+                            addToast('직무카드가 실무자에게 전송되었으며, 업무수행점검 리스트에 등록되었습니다.', 'success');
                         } else {
-                            alert('직무카드가 실무자에게 전송되었습니다.');
+                            addToast('직무카드가 실무자에게 전송되었습니다.', 'success');
                         }
                         resetForm();
                     }}

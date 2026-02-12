@@ -79,6 +79,9 @@ export interface JobInstructionDB {
     status: JobInstructionStatus;
     evidence_url: string | null;
     verification_result: 'pass' | 'fail' | null;
+    ai_score: number | null;
+    ai_analysis: string | null;
+    feedback_comment: string | null;
     deadline: string | null;
     started_at: string | null;
     completed_at: string | null;
@@ -147,9 +150,26 @@ export interface ActionPlanItem {
     issue: string;
     reason: string;
     timestamp: string;
-    status: 'pending' | 'in_progress' | 'completed' | 'impossible';
+    status: 'pending' | 'in_progress' | 'completed' | 'impossible' | 'non_compliant' | 'delayed';
     cause?: string;
     solution?: string;
+    // New fields for gap fulfillment
+    isVoc?: boolean;
+    customerName?: string;
+    verificationResult?: 'pass' | 'fail' | null;
+    aiScore?: number;
+    aiAnalysis?: string;
+    feedbackComment?: string;
+}
+
+export interface VocRecord {
+    id: number;
+    customerName: string;
+    roomNumber?: string;
+    content: string;
+    sentiment: 'positive' | 'neutral' | 'negative';
+    receivedAt: string;
+    status: 'received' | 'processed';
 }
 
 export interface JobInstruction {
@@ -159,8 +179,17 @@ export interface JobInstruction {
     subject: string;
     description: string;
     deadline: string;
-    status: 'sent' | 'received' | 'in_progress' | 'completed' | 'delayed' | 'non_compliant';
+    status: JobInstructionStatus;
     timestamp: string;
+    team: string;
+    created_at: string;
+    evidenceUrl?: string;
+    verificationResult?: 'pass' | 'fail' | null;
+    aiScore?: number | null;
+    aiAnalysis?: string | null;
+    feedbackComment?: string | null;
+    tpo_id?: number | null;
+    taskGroupId?: number | null;
 }
 
 // --- NEW TYPES FOR INSTRUCTION BOARD (DnD) ---
@@ -179,4 +208,5 @@ export type TaskStage = 'pre' | 'during' | 'post'; // 업무 전(Preparation), �
 export interface TaskCardData extends RegisteredTpo {
     stage: TaskStage;
     assignedMemberIds: string[]; // Temporarily assigned members before deployment
+    isVeteran?: boolean; // New flag for gap fulfillment
 }

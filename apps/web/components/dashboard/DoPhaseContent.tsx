@@ -45,7 +45,7 @@ const DoPhaseContent = () => {
 
             <div style={{ display: 'flex', gap: '10px', marginBottom: '30px', borderBottom: `2px solid ${colors.border}`, paddingBottom: '0' }}>
                 {([
-                    { key: 'checklist', label: '업무수행 점검' },
+                    { key: 'checklist', label: '업무수행 점검리스트' },
                     { key: 'library', label: '업무지시 라이브러리' },
                     { key: 'instruction', label: '업무지시 보드' },
                     { key: 'jobcard', label: '직무카드 현황' },

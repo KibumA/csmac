@@ -21,11 +21,11 @@ const CommonContext = createContext<CommonContextType | undefined>(undefined);
 export const CommonProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [activePhase, setActivePhase] = useState<Phase>('command');
     const [workplace, setWorkplace] = useState('소노벨 천안');
-    const [team, setTeam] = useState('프론트');
-    const [job, setJob] = useState('지배인');
+    const [team, setTeam] = useState('전체');
+    const [job, setJob] = useState('전체');
     const [registeredTpos, setRegisteredTpos] = useState<RegisteredTpo[]>([]);
 
-    const fetchTpos = async () => {
+    const fetchTpos = React.useCallback(async () => {
         try {
             const { data, error } = await supabase
                 .from('tpo')
@@ -100,21 +100,23 @@ export const CommonProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         } catch (err) {
             console.error('Unexpected error fetching TPOs:', err);
         }
-    };
+    }, []);
 
     useEffect(() => {
         fetchTpos();
     }, []);
 
+    const value = React.useMemo(() => ({
+        activePhase, setActivePhase,
+        workplace, setWorkplace,
+        team, setTeam,
+        job, setJob,
+        registeredTpos, setRegisteredTpos,
+        fetchTpos
+    }), [activePhase, workplace, team, job, registeredTpos, fetchTpos]);
+
     return (
-        <CommonContext.Provider value={{
-            activePhase, setActivePhase,
-            workplace, setWorkplace,
-            team, setTeam,
-            job, setJob,
-            registeredTpos, setRegisteredTpos,
-            fetchTpos
-        }}>
+        <CommonContext.Provider value={value}>
             {children}
         </CommonContext.Provider>
     );

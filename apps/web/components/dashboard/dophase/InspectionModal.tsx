@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { usePDCA } from '../../../context/PDCAContext';
+import { useToast } from '../../../context/ToastContext';
 import { colors } from '../../../styles/theme';
 import { ChecklistItem } from '@csmac/types';
 
@@ -11,6 +12,7 @@ export const InspectionModal: React.FC<InspectionModalProps> = ({
     setInspectionModalOpen
 }) => {
     const { registeredTpos, setupTasksToSop, selectedInspectionSopId } = usePDCA();
+    const { addToast } = useToast();
     const [selectedItems, setSelectedItems] = useState<ChecklistItem[]>([]);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -40,7 +42,7 @@ export const InspectionModal: React.FC<InspectionModalProps> = ({
         const success = await setupTasksToSop(selectedInspectionSopId, selectedItems);
 
         if (success) {
-            alert('세분화 설정이 저장되었습니다.');
+            addToast('세분화 설정이 저장되었습니다.', 'success');
             setInspectionModalOpen(false);
         }
     };

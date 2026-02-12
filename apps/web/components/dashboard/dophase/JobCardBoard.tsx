@@ -21,16 +21,35 @@ export const JobCardBoard: React.FC = () => {
             ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
                     {jobInstructions.map(jobInstruction => (
-                        <div key={jobInstruction.id} style={{ backgroundColor: 'white', borderRadius: '15px', padding: '20px', border: `1px solid ${colors.border}`, boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+                        <div key={jobInstruction.id} style={{
+                            backgroundColor: 'white',
+                            borderRadius: '15px',
+                            padding: '20px',
+                            border: jobInstruction.status === 'non_compliant' ? `2px solid ${colors.error}` : `1px solid ${colors.border}`,
+                            boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+                            position: 'relative'
+                        }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', paddingBottom: '10px', borderBottom: `1px solid ${colors.border}` }}>
                                 <span style={{ fontWeight: 'bold', color: colors.primaryBlue }}>To: {jobInstruction.assignee}</span>
                                 <span style={{ fontSize: '0.8rem', color: colors.textGray }}>{new Date(jobInstruction.timestamp).toLocaleDateString()}</span>
                             </div>
                             <div style={{ fontWeight: 'bold', fontSize: '1.1rem', marginBottom: '10px' }}>{jobInstruction.subject}</div>
                             <div style={{ fontSize: '0.9rem', color: colors.textDark, lineHeight: '1.5', minHeight: '60px' }}>{jobInstruction.description}</div>
-                            <div style={{ marginTop: '15px', display: 'flex', justifyContent: 'flex-end' }}>
-                                <span style={{ padding: '4px 12px', borderRadius: '4px', backgroundColor: '#E3F2FD', color: colors.primaryBlue, fontSize: '0.8rem', fontWeight: 'bold' }}>
-                                    {jobInstruction.status === 'sent' ? '전송됨' : jobInstruction.status}
+                            <div style={{ marginTop: '15px', display: 'flex', justifyContent: 'flex-end', gap: '8px', alignItems: 'center' }}>
+                                {jobInstruction.status === 'non_compliant' && (
+                                    <span style={{ fontSize: '0.75rem', color: colors.error, fontWeight: 'bold' }}>🚨 보완 요청됨</span>
+                                )}
+                                <span style={{
+                                    padding: '4px 12px',
+                                    borderRadius: '4px',
+                                    backgroundColor: jobInstruction.status === 'non_compliant' ? '#fee2e2' : '#E3F2FD',
+                                    color: jobInstruction.status === 'non_compliant' ? colors.error : colors.primaryBlue,
+                                    fontSize: '0.8rem',
+                                    fontWeight: 'bold'
+                                }}>
+                                    {jobInstruction.status === 'waiting' ? '대기중' :
+                                        jobInstruction.status === 'non_compliant' ? '미준수' :
+                                            jobInstruction.status === 'completed' ? '완료' : jobInstruction.status}
                                 </span>
                             </div>
                         </div>

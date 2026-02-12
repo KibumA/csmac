@@ -7,6 +7,8 @@ import { supabase } from '../../utils/supabaseClient';
 import { JobInstructionDB, JobInstructionStatus } from '@csmac/types';
 import { CommandCenterCard } from './commandcenter/CommandCenterCard';
 import { TEAMS } from '../../constants/pdca-data';
+import { Download, Table, Package, CheckSquare, ShieldCheck, BarChart3, RotateCw, Clock, AlertCircle } from 'lucide-react';
+import { exportToCsv } from '../../utils/csvExport';
 
 // Column definitions for the kanban board
 const KANBAN_COLUMNS = [
@@ -42,6 +44,7 @@ export default function CommandCenterContent() {
     const [filterTeam, setFilterTeam] = useState('all');
     const [loading, setLoading] = useState(true);
     const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+    const [mounted, setMounted] = useState(false);
 
     // Fetch all job instructions from Supabase
     const fetchInstructions = useCallback(async () => {
@@ -67,6 +70,7 @@ export default function CommandCenterContent() {
 
     // Initial load
     useEffect(() => {
+        setMounted(true);
         fetchInstructions();
     }, [fetchInstructions]);
 
@@ -113,13 +117,30 @@ export default function CommandCenterContent() {
             `}</style>
 
             {/* Header */}
-            <div style={{ marginBottom: '24px' }}>
-                <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: colors.textDark, margin: 0, letterSpacing: '-0.5px' }}>
-                    Action Command Center
-                </h1>
-                <p style={{ margin: '4px 0 0', color: '#64748B', fontSize: '14px' }}>
-                    사업장 전체 업무지시 실시간 현황 및 이행 검증
-                </p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '24px' }}>
+                <div>
+                    <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: colors.textDark, margin: 0, letterSpacing: '-0.5px' }}>
+                        Action Command Center
+                    </h1>
+                    <p style={{ margin: '4px 0 0', color: '#64748B', fontSize: '14px' }}>
+                        사업장 전체 업무지시 실시간 현황 및 이행 검증
+                    </p>
+                </div>
+
+                <button
+                    onClick={() => exportToCsv('command_center_tasks', instructions)}
+                    style={{
+                        display: 'flex', alignItems: 'center', gap: '6px',
+                        backgroundColor: 'white', border: `1px solid ${colors.border}`,
+                        padding: '8px 16px', borderRadius: '10px', fontSize: '13px',
+                        fontWeight: 600, color: '#64748B', cursor: 'pointer',
+                        boxShadow: '0 1px 2px rgba(0,0,0,0.05)', transition: '0.2s'
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#F8FAFC'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'white'; }}
+                >
+                    <Download size={14} /> CSV 내보내기
+                </button>
             </div>
 
             {/* Quick Navigation to PDCA Sub-modules */}
@@ -158,83 +179,83 @@ export default function CommandCenterContent() {
                     padding: '20px', borderBottom: `1px solid ${colors.border}`,
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                 }}>
-                    <div>
-                        <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>실시간 현황</h2>
-                        <p style={{ margin: '4px 0 0', color: '#64748B', fontSize: '13px' }}>
-                            기준 시각: {lastRefresh.toLocaleTimeString('ko-KR')}
-                        </p>
-                    </div>
-                    <button
-                        onClick={fetchInstructions}
-                        style={{
-                            padding: '10px 20px', borderRadius: '10px', fontSize: '14px', fontWeight: 700,
-                            cursor: 'pointer', border: `1px solid ${colors.primaryBlue}`,
-                            backgroundColor: colors.primaryBlue, color: 'white', transition: '0.2s',
-                        }}
-                    >
-                        🔄 새로고침
-                    </button>
-                </div>
-                <div style={{
-                    display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px',
-                    padding: '20px', background: 'linear-gradient(to bottom, transparent, rgba(0,0,0,0.01))',
-                }}>
-                    {[
-                        { label: '📌 전체 지시', value: stats.total, colorClass: '' },
-                        { label: '✅ 완료', value: stats.completed, colorClass: 'blue' },
-                        { label: '⏳ 지연', value: stats.delayed, colorClass: 'orange' },
-                        { label: '⚠️ 미준수', value: stats.nonCompliant, colorClass: 'red' },
-                    ].map(stat => (
-                        <div
-                            key={stat.label}
-                            style={{
-                                backgroundColor: stat.colorClass === 'blue' ? 'rgba(29,78,216,0.03)'
-                                    : stat.colorClass === 'orange' ? 'rgba(245,158,11,0.03)'
-                                        : stat.colorClass === 'red' ? 'rgba(239,68,68,0.03)'
-                                            : 'white',
-                                border: `1px solid ${stat.colorClass === 'blue' ? 'rgba(29,78,216,0.1)'
-                                    : stat.colorClass === 'orange' ? 'rgba(245,158,11,0.1)'
-                                        : stat.colorClass === 'red' ? 'rgba(239,68,68,0.1)'
-                                            : colors.border
-                                    }`,
-                                padding: '16px', borderRadius: '12px', transition: 'transform 0.2s', textAlign: 'center',
-                            }}
-                            onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; }}
-                            onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; }}
-                        >
-                            <div style={{ fontSize: '12px', fontWeight: 700, color: '#64748B', marginBottom: '8px' }}>
-                                {stat.label}
+                    <div style={{ display: 'flex', gap: '32px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <div style={{ backgroundColor: '#EEF2FF', padding: '10px', borderRadius: '12px' }}>
+                                <Table size={18} color={colors.primaryBlue} />
                             </div>
-                            <div style={{
-                                fontSize: '24px', fontWeight: 800,
-                                color: stat.colorClass === 'blue' ? '#1D4ED8'
-                                    : stat.colorClass === 'orange' ? '#F59E0B'
-                                        : stat.colorClass === 'red' ? '#EF4444'
-                                            : colors.textDark,
-                            }}>
-                                {stat.value}
+                            <div>
+                                <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Jobs</div>
+                                <div style={{ fontSize: '18px', fontWeight: 800, color: colors.textDark }}>{stats.total}</div>
                             </div>
                         </div>
-                    ))}
-                </div>
-            </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <div style={{ backgroundColor: '#ECFDF5', padding: '10px', borderRadius: '12px' }}>
+                                <ShieldCheck size={18} color="#10B981" />
+                            </div>
+                            <div>
+                                <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Completed</div>
+                                <div style={{ fontSize: '18px', fontWeight: 800, color: '#10B981' }}>{stats.completed}</div>
+                            </div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <div style={{ backgroundColor: '#FEF2F2', padding: '10px', borderRadius: '12px' }}>
+                                <Clock size={18} color="#EF4444" />
+                            </div>
+                            <div>
+                                <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Delayed</div>
+                                <div style={{ fontSize: '18px', fontWeight: 800, color: '#EF4444' }}>{stats.delayed}</div>
+                            </div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <div style={{ backgroundColor: '#FFFBEB', padding: '10px', borderRadius: '12px' }}>
+                                <AlertCircle size={18} color="#F59E0B" />
+                            </div>
+                            <div>
+                                <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Non-Compliant</div>
+                                <div style={{ fontSize: '18px', fontWeight: 800, color: '#F59E0B' }}>{stats.nonCompliant}</div>
+                            </div>
+                        </div>
+                    </div>
 
-            {/* Team Filter */}
-            <div style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                gap: '12px', marginBottom: '20px', flexWrap: 'wrap',
-            }}>
-                <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ textAlign: 'right', marginRight: '8px' }}>
+                            <div style={{ fontSize: '10px', color: '#94A3B8', fontWeight: 600 }}>LAST UPDATED</div>
+                            <div style={{ fontSize: '12px', color: '#64748B', fontWeight: 500 }}>
+                                {mounted ? lastRefresh.toLocaleTimeString() : ''}
+                            </div>
+                        </div>
+                        <button
+                            onClick={fetchInstructions}
+                            disabled={loading}
+                            style={{
+                                display: 'flex', alignItems: 'center', gap: '6px',
+                                padding: '8px 16px', borderRadius: '10px',
+                                backgroundColor: loading ? '#F1F5F9' : '#F8FAFC',
+                                border: `1px solid ${colors.border}`,
+                                color: colors.textDark, fontSize: '13px', fontWeight: 600,
+                                cursor: loading ? 'not-allowed' : 'pointer', transition: '0.2s',
+                            }}
+                        >
+                            <RotateCw size={14} className={loading ? 'animate-spin' : ''} />
+                            새로고침
+                        </button>
+                    </div>
+                </div>
+
+                {/* Team Filters */}
+                <div style={{ padding: '12px 20px', backgroundColor: '#F8FAFC', display: 'flex', gap: '8px', overflowX: 'auto' }}>
                     {TEAM_FILTERS.map(team => (
                         <button
                             key={team.key}
                             onClick={() => setFilterTeam(team.key)}
                             style={{
-                                padding: '8px 16px', backgroundColor: filterTeam === team.key ? colors.primaryBlue : 'white',
-                                color: filterTeam === team.key ? 'white' : '#64748B',
-                                border: `1px solid ${filterTeam === team.key ? colors.primaryBlue : colors.border}`,
-                                borderRadius: '999px', fontSize: '13px', fontWeight: 600,
-                                cursor: 'pointer', transition: '0.2s', whiteSpace: 'nowrap',
+                                padding: '6px 14px', borderRadius: '8px', fontSize: '12px', fontWeight: 600,
+                                cursor: 'pointer', transition: '0.2s',
+                                border: `1px solid ${filterTeam === team.key ? colors.primaryBlue : 'transparent'}`,
+                                backgroundColor: filterTeam === team.key ? 'white' : 'transparent',
+                                color: filterTeam === team.key ? colors.primaryBlue : '#64748B',
+                                boxShadow: filterTeam === team.key ? '0 1px 2px rgba(0,0,0,0.05)' : 'none',
                             }}
                         >
                             {team.label}
@@ -244,88 +265,40 @@ export default function CommandCenterContent() {
             </div>
 
             {/* Kanban Board */}
-            {loading ? (
-                <div style={{ textAlign: 'center', padding: '60px', color: '#64748B', fontSize: '14px' }}>
-                    데이터를 불러오는 중...
-                </div>
-            ) : instructions.length === 0 ? (
-                <div style={{
-                    textAlign: 'center', padding: '80px 20px', color: '#64748B',
-                    backgroundColor: '#F8FAFC', borderRadius: '18px', border: `1px solid ${colors.border}`,
-                }}>
-                    <div style={{ fontSize: '48px', marginBottom: '16px' }}>📋</div>
-                    <div style={{ fontSize: '16px', fontWeight: 700, marginBottom: '8px' }}>
-                        등록된 업무지시가 없습니다
-                    </div>
-                    <div style={{ fontSize: '14px', marginBottom: '24px' }}>
-                        Plan 단계에서 TPO 기준을 설정하고, 업무지시 라이브러리에서 보드에 배포해 주세요.
-                    </div>
-                    <button
-                        onClick={() => setActivePhase('plan')}
-                        style={{
-                            padding: '10px 24px', borderRadius: '10px', fontSize: '14px', fontWeight: 700,
-                            cursor: 'pointer', border: `1px solid ${colors.primaryBlue}`,
-                            backgroundColor: colors.primaryBlue, color: 'white',
-                        }}
-                    >
-                        TPO 기준 설정으로 이동
-                    </button>
-                </div>
-            ) : (
-                <div style={{ display: 'flex', gap: '20px', overflowX: 'auto', paddingBottom: '20px' }}>
-                    {KANBAN_COLUMNS.map(column => {
-                        const columnCards = filteredInstructions.filter(inst =>
-                            column.statuses.includes(inst.status)
-                        );
-                        return (
-                            <div
-                                key={column.key}
-                                style={{
-                                    flex: 1, minWidth: '300px', backgroundColor: '#F1F5F9',
-                                    borderRadius: '18px', padding: '12px',
-                                    display: 'flex', flexDirection: 'column', gap: '12px',
-                                    minHeight: '500px',
-                                }}
-                            >
-                                {/* Column Header */}
-                                <div style={{
-                                    padding: '8px 4px', display: 'flex', alignItems: 'center',
-                                    justifyContent: 'space-between',
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
+                {KANBAN_COLUMNS.map(column => (
+                    <div key={column.key} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 8px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span style={{ fontSize: '18px' }}>{column.icon}</span>
+                                <h3 style={{ fontSize: '14px', fontWeight: 700, color: colors.textDark, margin: 0 }}>{column.label}</h3>
+                                <span style={{
+                                    fontSize: '11px', fontWeight: 700, color: '#94A3B8',
+                                    backgroundColor: '#F1F5F9', padding: '2px 8px', borderRadius: '10px'
                                 }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 800, fontSize: '15px' }}>
-                                        <span>{column.icon}</span>
-                                        {column.label}
-                                    </div>
-                                    <span style={{
-                                        backgroundColor: 'white', padding: '2px 10px', borderRadius: '12px',
-                                        fontSize: '12px', fontWeight: 700, border: `1px solid ${colors.border}`,
-                                    }}>
-                                        {columnCards.length}
-                                    </span>
-                                </div>
+                                    {filteredInstructions.filter(inst => column.statuses.includes(inst.status)).length}
+                                </span>
+                            </div>
+                        </div>
 
-                                {/* Cards */}
-                                {columnCards.map(instruction => (
+                        <div style={{
+                            display: 'flex', flexDirection: 'column', gap: '12px',
+                            minHeight: '500px', padding: '4px',
+                        }}>
+                            {filteredInstructions
+                                .filter(inst => column.statuses.includes(inst.status))
+                                .map(instruction => (
                                     <CommandCenterCard
                                         key={instruction.id}
                                         instruction={instruction}
                                         onStatusChange={handleStatusChange}
                                     />
-                                ))}
-
-                                {columnCards.length === 0 && (
-                                    <div style={{
-                                        textAlign: 'center', padding: '40px 10px', color: '#94A3B8',
-                                        fontSize: '13px', fontWeight: 600,
-                                    }}>
-                                        해당 상태의 업무가 없습니다
-                                    </div>
-                                )}
-                            </div>
-                        );
-                    })}
-                </div>
-            )}
+                                ))
+                            }
+                        </div>
+                    </div>
+                ))}
+            </div>
         </div>
     );
 }

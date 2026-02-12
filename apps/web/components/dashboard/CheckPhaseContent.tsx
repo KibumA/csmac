@@ -1,160 +1,284 @@
+'use client';
+
 import React from 'react';
-import { supabase } from '../../utils/supabaseClient';
-import { JobInstruction } from '@csmac/types';
-import { usePDCA } from '../../context/PDCAContext';
+import {
+    CheckCircle2, AlertCircle, Scan, Image as LucideImage,
+    ArrowRight, MessageSquare, ShieldCheck, Download,
+    RefreshCw, Zap
+} from 'lucide-react';
+import { colors } from '../../styles/theme';
+import { exportToCsv } from '../../utils/csvExport';
+import { useCheckPhase } from '../../hooks/useCheckPhase';
 
-export default function CheckPhaseContent({ colors }: { colors: any }) {
-    const { team, workplace } = usePDCA();
-    const [verificationList, setVerificationList] = React.useState<JobInstruction[]>([]);
+export default function CheckPhaseContent() {
+    const {
+        verificationList, selectedId, setSelectedId, isAnalyzing,
+        feedback, setFeedback, mounted, handleBatchAnalysis,
+        submitVerification, selectedItem, standardImage
+    } = useCheckPhase();
 
-    const thStyle = { padding: '12px', textAlign: 'left', fontWeight: 'bold', color: '#333', borderBottom: `1px solid ${colors.border}` } as React.CSSProperties;
-    const tdStyle = { padding: '12px', borderBottom: `1px solid ${colors.border}`, verticalAlign: 'middle' } as React.CSSProperties;
-
-    const fetchVerificationList = async () => {
-        const { data, error } = await supabase
-            .from('job_instructions')
-            .select('*')
-            .eq('team', team)
-            .in('status', ['completed', 'non_compliant'])
-            .order('completed_at', { ascending: false });
-
-        if (data) {
-            const mapped: JobInstruction[] = data.map((item: any) => ({
-                id: item.id,
-                targetTeam: item.team,
-                assignee: item.assignee || '담당자',
-                subject: item.subject,
-                description: item.description || '',
-                deadline: item.deadline || '',
-                status: item.status, // completed, non_compliant
-                timestamp: item.completed_at || item.created_at,
-                // Add extended fields if type supports, or cast
-                evidenceUrl: item.evidence_url,
-                verificationResult: item.verification_result // 'pass' | 'fail' | null
-            } as any)); // Type casting for MVP extended fields
-            setVerificationList(mapped);
-        }
+    const handleExport = () => {
+        exportToCsv('verification_report', verificationList.map(v => ({
+            id: v.id,
+            subject: v.subject,
+            assignee: v.assignee,
+            ai_score: v.aiScore,
+            result: v.verificationResult,
+            feedback: v.feedbackComment
+        })));
     };
 
-    React.useEffect(() => {
-        fetchVerificationList();
-    }, [team]);
-
-    const handleVerify = async (id: number, result: 'pass' | 'fail') => {
-        const { error } = await supabase
-            .from('job_instructions')
-            .update({
-                verification_result: result,
-                status: result === 'fail' ? 'non_compliant' : 'completed' // Update status if fail
-            })
-            .eq('id', id);
-
-        if (!error) {
-            alert(`검증 결과가 저장되었습니다: ${result === 'pass' ? '승인' : '미준수'}`);
-            fetchVerificationList(); // Refresh
-        }
-    };
+    if (!mounted) return null;
 
     return (
-        <>
-            <header style={{ marginBottom: '30px' }}>
-                <h1 style={{ fontSize: '1.2rem', color: colors.textDark, marginBottom: '8px' }}>
-                    <span style={{ color: colors.primaryBlue, fontWeight: 'bold' }}>Check.</span> 실행 근거를 확보하고 업무 수행 상태를 검증합니다.
-                </h1>
+        <div style={{ width: '100%', minHeight: '80vh', paddingBottom: '100px', display: 'flex', flexDirection: 'column' }}>
+            {/* Header */}
+            <header style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                <div>
+                    <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: colors.textDark, marginBottom: '8px' }}>
+                        <span style={{ color: colors.primaryBlue }}>Check.</span> TPO 이행근거 검증 보드
+                    </h1>
+                    <p style={{ color: '#64748B', fontSize: '1rem' }}>실행 근거 사진 판독 및 품질 준수 여부 확정</p>
+                </div>
+
+                <div style={{ display: 'flex', gap: '12px' }}>
+                    <button
+                        onClick={handleBatchAnalysis}
+                        disabled={isAnalyzing}
+                        style={{
+                            display: 'flex', alignItems: 'center', gap: '8px',
+                            backgroundColor: colors.primaryBlue, color: 'white',
+                            border: 'none', padding: '10px 20px', borderRadius: '10px',
+                            cursor: 'pointer', fontWeight: 'bold', fontSize: '14px',
+                            boxShadow: '0 4px 6px rgba(59, 130, 246, 0.2)',
+                            opacity: isAnalyzing ? 0.7 : 1, transition: '0.2s'
+                        }}
+                    >
+                        {isAnalyzing ? <RefreshCw className="animate-spin" size={16} /> : <Zap size={16} />}
+                        AI 일괄 판독 실행
+                    </button>
+                    <button
+                        onClick={handleExport}
+                        style={{
+                            display: 'flex', alignItems: 'center', gap: '8px',
+                            backgroundColor: 'white', border: `1px solid ${colors.border}`,
+                            padding: '10px 16px', borderRadius: '10px', fontSize: '14px',
+                            fontWeight: 'bold', color: '#64748B', cursor: 'pointer'
+                        }}
+                    >
+                        <Download size={16} /> CSV 추출
+                    </button>
+                </div>
             </header>
 
-            <div style={{ backgroundColor: 'white', borderRadius: '12px', border: `1px solid ${colors.border}`, overflow: 'hidden' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead>
-                        <tr style={{ backgroundColor: colors.headerBlue }}>
-                            <th style={thStyle}>사업장/직무/업무</th>
-                            <th style={thStyle}>이행 증빙 (사진)</th>
-                            <th style={thStyle}>수행자 / 시간</th>
-                            <th style={thStyle}>AI 1차 판독</th>
-                            <th style={thStyle}>관리자 최종 검증</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {verificationList.length > 0 ? (
-                            verificationList.map((record: any) => (
-                                <tr key={record.id} style={{ borderBottom: `1px solid ${colors.border}`, backgroundColor: record.status === 'non_compliant' ? '#FFF8F8' : 'white' }}>
-                                    <td style={tdStyle}>
-                                        <div style={{ fontWeight: 'bold', fontSize: '0.9rem', color: colors.primaryBlue }}>{record.targetTeam}</div>
-                                        <div style={{ fontSize: '0.95rem', color: colors.textDark, marginTop: '4px' }}>{record.subject}</div>
-                                    </td>
-                                    <td style={{ ...tdStyle, textAlign: 'center' }}>
-                                        {record.evidenceUrl ? (
-                                            <a href={record.evidenceUrl} target="_blank" rel="noopener noreferrer">
-                                                <img
-                                                    src={record.evidenceUrl}
-                                                    alt="Evidence"
-                                                    style={{ width: '80px', height: '60px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #ddd' }}
-                                                />
-                                            </a>
-                                        ) : (
-                                            <span style={{ color: colors.textGray, fontSize: '0.8rem' }}>사진 없음</span>
-                                        )}
-                                    </td>
-                                    <td style={tdStyle}>
-                                        <div style={{ fontWeight: 'bold' }}>{record.assignee}</div>
-                                        <div style={{ fontSize: '0.8rem', color: colors.textGray }}>
-                                            {new Date(record.timestamp).toLocaleString()}
-                                        </div>
-                                    </td>
-                                    <td style={{ ...tdStyle, textAlign: 'center' }}>
-                                        {/* AI Verdict based on verification result */}
-                                        <span style={{
-                                            padding: '4px 8px', borderRadius: '12px',
-                                            backgroundColor: record.verificationResult === 'fail' ? '#FEE2E2' : '#E8F5E9',
-                                            color: record.verificationResult === 'fail' ? '#DC2626' : '#2E7D32',
-                                            fontSize: '0.8rem', fontWeight: 'bold'
-                                        }}>
-                                            {record.verificationResult === 'fail' ? 'AI 부적합' : 'AI 적합'}
-                                        </span>
-                                    </td>
-                                    <td style={{ ...tdStyle, textAlign: 'center' }}>
-                                        {record.verificationResult ? (
-                                            <span style={{
-                                                fontWeight: 'bold',
-                                                color: record.verificationResult === 'pass' ? colors.success : '#D32F2F'
-                                            }}>
-                                                {record.verificationResult === 'pass' ? '✅ 승인됨' : '❌ 미준수'}
-                                            </span>
-                                        ) : (
-                                            <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
-                                                <button
-                                                    onClick={() => handleVerify(record.id, 'pass')}
-                                                    style={{
-                                                        padding: '6px 12px', border: `1px solid ${colors.success}`, backgroundColor: 'white',
-                                                        color: colors.success, borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold'
-                                                    }}
-                                                >
-                                                    승인(O)
-                                                </button>
-                                                <button
-                                                    onClick={() => handleVerify(record.id, 'fail')}
-                                                    style={{
-                                                        padding: '6px 12px', border: '1px solid #D32F2F', backgroundColor: 'white',
-                                                        color: '#D32F2F', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold'
-                                                    }}
-                                                >
-                                                    미준수(X)
-                                                </button>
-                                            </div>
-                                        )}
-                                    </td>
+            {/* Main Content Grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: selectedId ? '1.2fr 1fr' : '1fr', gap: '24px', transition: 'all 0.3s ease-in-out' }}>
+
+                {/* Left: Verification List */}
+                <section style={{
+                    backgroundColor: 'white', border: `1px solid ${colors.border}`, borderRadius: '16px',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.05)', overflow: 'hidden'
+                }}>
+                    <div style={{ padding: '20px', borderBottom: `1px solid ${colors.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#F8FAFC' }}>
+                        <div style={{ fontWeight: 800, color: '#1E293B', fontSize: '15px' }}>이행근거 리스트 ({verificationList.length})</div>
+                        <div style={{ display: 'flex', gap: '12px', fontSize: '12px', fontWeight: 'bold' }}>
+                            <span style={{ color: colors.success }}>PASS: {verificationList.filter(v => v.verificationResult === 'pass').length}</span>
+                            <span style={{ color: '#EF4444' }}>FAIL: {verificationList.filter(v => v.verificationResult === 'fail').length}</span>
+                        </div>
+                    </div>
+
+                    <div style={{ overflowY: 'auto', maxHeight: '700px' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                            <thead style={{ position: 'sticky', top: 0, zIndex: 1, backgroundColor: '#F8FAFC', borderBottom: `1px solid ${colors.border}` }}>
+                                <tr>
+                                    <th style={{ padding: '12px 20px', textAlign: 'left', fontSize: '12px', color: '#94A3B8' }}>업무 정보</th>
+                                    <th style={{ padding: '12px 20px', textAlign: 'center', fontSize: '12px', color: '#94A3B8' }}>이행 증빙</th>
+                                    <th style={{ padding: '12px 20px', textAlign: 'center', fontSize: '12px', color: '#94A3B8' }}>AI 일치율</th>
+                                    <th style={{ padding: '12px 20px', textAlign: 'right', fontSize: '12px', color: '#94A3B8' }}>최종 상태</th>
                                 </tr>
-                            ))
-                        ) : (
-                            <tr>
-                                <td colSpan={5} style={{ padding: '50px', textAlign: 'center', color: colors.textGray }}>
-                                    검증할 데이터가 없습니다. Do 단계에서 업무를 완료해 주세요.
-                                </td>
-                            </tr>
-                        )}
-                    </tbody>
-                </table>
+                            </thead>
+                            <tbody>
+                                {verificationList.map(item => (
+                                    <tr
+                                        key={item.id}
+                                        onClick={() => setSelectedId(item.id)}
+                                        style={{
+                                            cursor: 'pointer',
+                                            borderBottom: `1px solid ${colors.border}`,
+                                            backgroundColor: selectedId === item.id ? '#EFF6FF' : 'transparent',
+                                            transition: 'background-color 0.2s'
+                                        }}
+                                    >
+                                        <td style={{ padding: '16px 20px' }}>
+                                            <div style={{ fontSize: '11px', fontWeight: 800, color: colors.primaryBlue, textTransform: 'uppercase', marginBottom: '2px' }}>{item.targetTeam}</div>
+                                            <div style={{ fontWeight: 700, color: '#1E293B', fontSize: '14px' }}>{item.subject}</div>
+                                            <div style={{ fontSize: '12px', color: '#64748B', marginTop: '4px' }}>{item.assignee} · {new Date(item.timestamp).toLocaleTimeString()}</div>
+                                        </td>
+                                        <td style={{ padding: '16px 20px', textAlign: 'center' }}>
+                                            {item.evidenceUrl ? (
+                                                <img src={item.evidenceUrl} style={{ width: '60px', height: '45px', objectFit: 'cover', borderRadius: '6px', border: '1px solid #E2E8F0' }} alt="proof" />
+                                            ) : (
+                                                <div style={{ width: '60px', height: '45px', backgroundColor: '#F1F5F9', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                    <LucideImage size={16} color="#94A3B8" />
+                                                </div>
+                                            )}
+                                        </td>
+                                        <td style={{ padding: '16px 20px', textAlign: 'center' }}>
+                                            {item.aiScore ? (
+                                                <div style={{ display: 'inline-block' }}>
+                                                    <div style={{ fontSize: '14px', fontWeight: 900, color: item.aiScore > 80 ? colors.success : '#F59E0B' }}>
+                                                        {item.aiScore}%
+                                                    </div>
+                                                    <div style={{ width: '40px', height: '3px', backgroundColor: '#E2E8F0', borderRadius: '99px', marginTop: '4px', overflow: 'hidden' }}>
+                                                        <div style={{ width: `${item.aiScore}%`, height: '100%', backgroundColor: item.aiScore > 80 ? colors.success : '#F59E0B' }} />
+                                                    </div>
+                                                </div>
+                                            ) : '--'}
+                                        </td>
+                                        <td style={{ padding: '16px 20px', textAlign: 'right' }}>
+                                            {item.verificationResult ? (
+                                                <div style={{
+                                                    display: 'inline-flex', alignItems: 'center', gap: '4px',
+                                                    padding: '4px 10px', borderRadius: '99px', fontSize: '11px', fontWeight: 800,
+                                                    backgroundColor: item.verificationResult === 'pass' ? '#ECFDF5' : '#FEF2F2',
+                                                    color: item.verificationResult === 'pass' ? '#059669' : '#DC2626',
+                                                    border: `1px solid ${item.verificationResult === 'pass' ? '#D1FAE5' : '#FEE2E2'}`
+                                                }}>
+                                                    {item.verificationResult === 'pass' ? <CheckCircle2 size={12} /> : <AlertCircle size={12} />}
+                                                    {item.verificationResult === 'pass' ? 'PASS' : 'FAIL'}
+                                                </div>
+                                            ) : (
+                                                <span style={{ fontSize: '11px', color: '#94A3B8', fontWeight: 600 }}>대기중</span>
+                                            )}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                {/* Right: Detailed Analysis Panel */}
+                {selectedId && selectedItem && (
+                    <section style={{
+                        backgroundColor: 'white', border: `1px solid ${colors.border}`, borderRadius: '16px',
+                        display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+                        animation: 'slideIn 0.3s ease-out'
+                    }}>
+                        <style>{`@keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }`}</style>
+
+                        <div style={{ padding: '20px', borderBottom: `1px solid ${colors.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div>
+                                <h3 style={{ fontWeight: 800, color: '#1E293B' }}>검증 상세 리포트</h3>
+                                <p style={{ fontSize: '12px', color: '#64748B' }}>#{selectedItem.id} · {selectedItem.subject}</p>
+                            </div>
+                            <button
+                                onClick={() => setSelectedId(null)}
+                                style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#94A3B8' }}
+                            >
+                                ✕
+                            </button>
+                        </div>
+
+                        <div style={{ flex: 1, padding: '24px', overflowY: 'auto' }}>
+                            {/* Comparison View */}
+                            <div style={{ marginBottom: '24px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                    <span style={{ fontSize: '12px', fontWeight: 800, color: '#64748B' }}>IMAGE COMPARISON</span>
+                                    <Scan size={16} color={colors.primaryBlue} />
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 40px 1fr', alignItems: 'center', gap: '8px' }}>
+                                    <div style={{ textAlign: 'center' }}>
+                                        <div style={{ width: '100%', height: '140px', backgroundColor: '#F8FAFC', borderRadius: '10px', overflow: 'hidden', border: `1px solid ${colors.border}` }}>
+                                            {standardImage ? (
+                                                <img src={standardImage} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="standard" />
+                                            ) : (
+                                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+                                                    <LucideImage size={24} color="#CBD5E1" />
+                                                    <span style={{ fontSize: '10px', color: '#94A3B8', marginTop: '4px' }}>표준 이미지 없음</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                        <span style={{ fontSize: '10px', fontWeight: 700, color: '#94A3B8', marginTop: '4px', display: 'block' }}>[STANDARD]</span>
+                                    </div>
+                                    <div style={{ textAlign: 'center' }}>
+                                        <ArrowRight size={24} color="#CBD5E1" />
+                                    </div>
+                                    <div style={{ textAlign: 'center' }}>
+                                        <div style={{ width: '100%', height: '140px', backgroundColor: '#F8FAFC', borderRadius: '10px', overflow: 'hidden', border: `2px solid ${colors.primaryBlue}` }}>
+                                            {selectedItem.evidenceUrl ? (
+                                                <img src={selectedItem.evidenceUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="submitted" />
+                                            ) : (
+                                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+                                                    <LucideImage size={24} color="#CBD5E1" />
+                                                </div>
+                                            )}
+                                        </div>
+                                        <span style={{ fontSize: '10px', fontWeight: 700, color: colors.primaryBlue, marginTop: '4px', display: 'block' }}>[SUBMITTED]</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* AI Analysis Result */}
+                            <div style={{ backgroundColor: '#F8FAFC', padding: '16px', borderRadius: '12px', marginBottom: '24px', border: '1px solid #E2E8F0' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                                    <ShieldCheck size={18} color={colors.primaryBlue} />
+                                    <span style={{ fontWeight: 800, fontSize: '14px' }}>AI 종합 판독 결과</span>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                                    <span style={{ fontSize: '13px', color: '#475569' }}>표준 가이드라인 일치율</span>
+                                    <span style={{ fontSize: '20px', fontWeight: 900, color: colors.primaryBlue }}>{selectedItem.aiScore || 0}%</span>
+                                </div>
+                                <div style={{ fontSize: '12px', color: '#64748B', lineHeight: 1.6, padding: '12px', backgroundColor: 'white', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
+                                    <strong>AI 심층 분석:</strong> {selectedItem.aiAnalysis || '일괄 판독을 실행해 주세요.'}
+                                </div>
+                            </div>
+
+                            {/* Manager Feedback */}
+                            <div style={{ marginBottom: '24px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                                    <MessageSquare size={16} color="#64748B" />
+                                    <span style={{ fontWeight: 800, fontSize: '13px', color: '#475569' }}>실무자 피드백 (미준수 시 전송)</span>
+                                </div>
+                                <textarea
+                                    value={feedback}
+                                    onChange={(e) => setFeedback(e.target.value)}
+                                    placeholder="무엇을 개선해야 하는지 구체적으로 입력하세요..."
+                                    style={{
+                                        width: '100%', height: '100px', padding: '12px', borderRadius: '10px',
+                                        border: `1px solid ${colors.border}`, fontSize: '13px', resize: 'none',
+                                        fontFamily: 'inherit'
+                                    }}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div style={{ padding: '20px', borderTop: `1px solid ${colors.border}`, display: 'flex', gap: '12px' }}>
+                            <button
+                                onClick={() => submitVerification('fail')}
+                                style={{
+                                    flex: 1, padding: '14px', borderRadius: '10px', border: '1px solid #EF4444',
+                                    backgroundColor: 'white', color: '#EF4444', fontWeight: 800, cursor: 'pointer',
+                                    transition: 'all 0.2s'
+                                }}
+                            >
+                                FAIL (미준수 확정)
+                            </button>
+                            <button
+                                onClick={() => submitVerification('pass')}
+                                style={{
+                                    flex: 1, padding: '14px', borderRadius: '10px', border: 'none',
+                                    backgroundColor: colors.success, color: 'white', fontWeight: 800, cursor: 'pointer',
+                                    boxShadow: '0 4px 6px rgba(16, 185, 129, 0.2)', transition: 'all 0.2s'
+                                }}
+                            >
+                                PASS (승인 완료)
+                            </button>
+                        </div>
+                    </section>
+                )}
             </div>
-        </>
+        </div>
     );
 }

@@ -1,5 +1,6 @@
 import React from 'react';
 import { usePDCA } from '../../../context/PDCAContext';
+import { useToast } from '../../../context/ToastContext';
 import { colors, selectStyle } from '../../../styles/theme';
 
 interface TpoSetupModalProps {
@@ -25,6 +26,7 @@ export const TpoSetupModal: React.FC<TpoSetupModalProps> = ({
         tpoOptions,
         registeredTpos
     } = usePDCA();
+    const { addToast } = useToast();
 
     return (
         <div style={{
@@ -100,7 +102,7 @@ export const TpoSetupModal: React.FC<TpoSetupModalProps> = ({
                     <button
                         onClick={() => {
                             if (!newSopCategory || !newTpo.place || !newTpo.time || !newTpo.occasion) {
-                                alert('모든 항목을 입력해주세요.');
+                                addToast('모든 항목을 입력해주세요.', 'warning');
                                 return;
                             }
                             setTpoModalOpen(false);

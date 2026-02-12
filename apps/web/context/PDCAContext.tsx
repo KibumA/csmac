@@ -3,19 +3,23 @@ import { CommonProvider, useCommon } from './CommonContext';
 import { PlanProvider, usePlan } from './PlanContext';
 import { DoProvider, useDo } from './DoContext';
 import { ActProvider, useAct } from './ActContext';
+import { ToastProvider } from './ToastContext';
+import { ActionPlanItem, InspectionRecord, RegisteredTpo } from '@csmac/types';
 import { TEAMS, TPO_OPTIONS, PLACE_OCCASION_MAPPING, CRITERIA_OPTIONS } from '../constants/pdca-data';
 
 export const PDCAProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     return (
-        <CommonProvider>
-            <PlanProvider>
-                <DoProvider>
-                    <ActProvider>
-                        {children}
-                    </ActProvider>
-                </DoProvider>
-            </PlanProvider>
-        </CommonProvider>
+        <ToastProvider>
+            <CommonProvider>
+                <PlanProvider>
+                    <DoProvider>
+                        <ActProvider>
+                            {children}
+                        </ActProvider>
+                    </DoProvider>
+                </PlanProvider>
+            </CommonProvider>
+        </ToastProvider>
     );
 };
 
@@ -27,7 +31,7 @@ export const usePDCA = () => {
 
     const currentCriteria = CRITERIA_OPTIONS[`${plan.selectedTpo.place}|${plan.selectedTpo.occasion}`];
 
-    const addInspectionResult = (result: any) => {
+    const addInspectionResult = React.useCallback((result: Omit<InspectionRecord, 'id'>) => {
         const newId = doPhase.addInspectionResult(result);
         if (result.status === 'X') {
             act.addActionPlanItem({
@@ -41,10 +45,11 @@ export const usePDCA = () => {
                 status: 'pending'
             });
         }
-    };
+    }, [doPhase, act, common.team]);
 
     // Merge everything into a single object for backward compatibility
-    return {
+    // Merge everything into a single object for backward compatibility
+    return React.useMemo(() => ({
         ...common,
         ...plan,
         ...doPhase,
@@ -56,5 +61,5 @@ export const usePDCA = () => {
         placeOccasionMapping: PLACE_OCCASION_MAPPING,
         criteriaOptions: CRITERIA_OPTIONS,
         currentCriteria
-    };
+    }), [common, plan, doPhase, act, addInspectionResult, currentCriteria]);
 };

@@ -10,17 +10,20 @@ interface LibraryCardProps {
 }
 
 export const LibraryCard: React.FC<LibraryCardProps> = ({ data, onViewDetail, onToggleBoard, isDeployed }) => {
-    // Reverted to count the number of checklist combinations (setupTasks) created in the Do phase
-    const subdivisionCount = data.setupTasks?.length || 0;
+    const displayItems = (data as any).displayItems || data.criteria.items;
+    const currentGroupId = (data as any).currentGroupId;
+
+    // subdivisionCount will now represent the number of items in this specific combination
+    const itemCount = displayItems.length;
 
     // Heuristic: 1.5 mins per checklist item if not provided
-    const estimatedTime = data.criteria.items.length * 1.5;
+    const estimatedTime = itemCount * 1.5;
 
     // Check if any items mention "사진" or "촬영" for evidence
-    const needsPhoto = data.criteria.items.some(item =>
+    const needsPhoto = displayItems.some((item: any) =>
         item.content.includes('사진') || item.content.includes('촬영')
     );
-    const photoCount = data.criteria.items.filter(item =>
+    const photoCount = displayItems.filter((item: any) =>
         item.content.includes('사진') || item.content.includes('촬영')
     ).length;
 
@@ -49,8 +52,28 @@ export const LibraryCard: React.FC<LibraryCardProps> = ({ data, onViewDetail, on
                 {data.criteria.checklist}
             </div>
 
-            <div style={{ fontSize: '0.85rem', color: colors.textGray, marginBottom: '15px' }}>
+            <div style={{ fontSize: '0.85rem', color: colors.textGray, marginBottom: '8px' }}>
                 예상 {Math.ceil(estimatedTime)}분 · 실행근거: {evidenceText}
+            </div>
+
+            <div style={{
+                fontSize: '0.7rem',
+                color: colors.primaryBlue,
+                backgroundColor: '#F0F9FF',
+                padding: '10px',
+                borderRadius: '8px',
+                marginBottom: '15px',
+                minHeight: '48px', // Increase vertical presence
+                display: '-webkit-box',
+                WebkitLineClamp: 3,
+                WebkitBoxOrient: 'vertical',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'normal', // Allow wrapping
+                fontWeight: 500,
+                lineHeight: '1.5'
+            }}>
+                {displayItems.map((i: any) => i.content).join(', ')}
             </div>
 
             <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '20px' }}>
@@ -76,47 +99,40 @@ export const LibraryCard: React.FC<LibraryCardProps> = ({ data, onViewDetail, on
                         사진필수
                     </span>
                 )}
-                {data.setupTasks && data.setupTasks.length > 0 ? (
-                    <span style={{ padding: '3px 10px', backgroundColor: '#E8F5E9', color: '#2E7D32', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 'bold' }}>
-                        세분화 {subdivisionCount}
-                    </span>
-                ) : (
-                    <span style={{ padding: '3px 10px', backgroundColor: '#F3E5F5', color: '#7B1FA2', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 'bold' }}>
-                        항목 {subdivisionCount}
-                    </span>
-                )}
+                <span style={{
+                    padding: '3px 10px',
+                    backgroundColor: '#E8F5E9',
+                    color: '#2E7D32',
+                    borderRadius: '6px',
+                    fontSize: '0.75rem',
+                    fontWeight: 'bold'
+                }}>
+                    항목 {itemCount}
+                </span>
             </div>
 
             <div style={{ display: 'flex', borderTop: `1px solid ${colors.border}`, paddingTop: '15px', gap: '10px' }}>
                 <button
-                    onClick={() => {
-                        if (data.setupTasks && data.setupTasks.length > 0) {
-                            // Batch deploy/remove ALL setupTasks
-                            const allDeployed = data.setupTasks.every(g => isDeployed(g.id));
-                            data.setupTasks.forEach(g => {
-                                if (allDeployed) {
-                                    // Remove all if all are deployed
-                                    if (isDeployed(g.id)) onToggleBoard(g.id);
-                                } else {
-                                    // Deploy all that aren't deployed yet
-                                    if (!isDeployed(g.id)) onToggleBoard(g.id);
-                                }
-                            });
-                        }
-                    }}
+                    onClick={() => onToggleBoard(currentGroupId)}
                     style={{
                         flex: 1.5,
                         padding: '8px 10px',
                         border: '1px solid rgba(15,23,42,0.10)',
-                        backgroundColor: (data.setupTasks && data.setupTasks.length > 0 && data.setupTasks.every(g => isDeployed(g.id))) ? '#E8F5E9' : '#0F172A',
-                        color: (data.setupTasks && data.setupTasks.length > 0 && data.setupTasks.every(g => isDeployed(g.id))) ? '#2E7D32' : 'white',
+                        backgroundColor: currentGroupId
+                            ? (isDeployed(currentGroupId) ? '#E8F5E9' : '#0F172A')
+                            : (data.setupTasks && data.setupTasks.length > 0 && data.setupTasks.every(g => isDeployed(g.id)) ? '#E8F5E9' : '#0F172A'),
+                        color: currentGroupId
+                            ? (isDeployed(currentGroupId) ? '#2E7D32' : 'white')
+                            : (data.setupTasks && data.setupTasks.length > 0 && data.setupTasks.every(g => isDeployed(g.id)) ? '#2E7D32' : 'white'),
                         borderRadius: '10px',
                         fontWeight: 950,
                         fontSize: '12px',
                         cursor: 'pointer',
                         whiteSpace: 'nowrap',
                     }}>
-                    {(data.setupTasks && data.setupTasks.length > 0 && data.setupTasks.every(g => isDeployed(g.id))) ? '보드에서 제거' : '우리팀 보드로'}
+                    {currentGroupId
+                        ? (isDeployed(currentGroupId) ? '보드에서 제거' : '우리팀 보드로')
+                        : (data.setupTasks && data.setupTasks.length > 0 && data.setupTasks.every(g => isDeployed(g.id)) ? '보드에서 제거' : '우리팀 보드로')}
                 </button>
                 <button
                     onClick={onViewDetail}

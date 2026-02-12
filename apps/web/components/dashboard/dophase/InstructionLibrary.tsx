@@ -1,13 +1,20 @@
 import React, { useState } from 'react';
 import { colors } from '../../../styles/theme';
 import { usePDCA } from '../../../context/PDCAContext';
-import { RegisteredTpo } from '@csmac/types';
+import { useToast } from '../../../context/ToastContext';
+import { RegisteredTpo, ChecklistItem } from '@csmac/types';
 import { CategoryColumn, TEAM_COLORS } from './CategoryColumn';
 import { LibraryDetailModal } from './LibraryDetailModal';
 import { TEAMS } from '../../../constants/pdca-data';
 
+interface FlattenedLibraryItem extends RegisteredTpo {
+    currentGroupId: number;
+    displayItems: ChecklistItem[];
+}
+
 export const InstructionLibrary: React.FC = () => {
-    const { registeredTpos, deployedTaskGroupIds, deployToBoard, removeFromBoard } = usePDCA();
+    const { registeredTpos, deployedTaskGroupIds, deployToBoard, removeFromBoard, setupTasksToSop } = usePDCA();
+    const { addToast } = useToast();
     const [searchQuery, setSearchQuery] = useState('');
 
     const handleToggleBoard = (groupId: number) => {
@@ -19,9 +26,9 @@ export const InstructionLibrary: React.FC = () => {
     };
 
     const isDeployed = (groupId: number) => deployedTaskGroupIds.includes(groupId);
-    const [selectedOccasion, setSelectedOccasion] = useState<string | null>(null);
-    const [selectedTeam, setSelectedTeam] = useState<string | null>(null);
-    const [selectedJob, setSelectedJob] = useState<string | null>(null);
+    const [selectedOccasion, setSelectedOccasion] = useState<string[]>([]);
+    const [selectedTeam, setSelectedTeam] = useState<string[]>([]);
+    const [selectedJob, setSelectedJob] = useState<string[]>([]);
     const [selectedMode, setSelectedMode] = useState('전체');
 
     const [selectedDetailItem, setSelectedDetailItem] = useState<RegisteredTpo | null>(null);
@@ -37,30 +44,40 @@ export const InstructionLibrary: React.FC = () => {
         if (!teamJobMap[t.team].includes(t.job)) teamJobMap[t.team].push(t.job);
     });
 
-    // Filtering Logic
-    const filteredItems = registeredTpos.filter(item => {
+    // Flatten items: Each setupTask (combination) becomes its own card
+    const flattenedItems = registeredTpos.flatMap(tpo => {
+        if (!tpo.setupTasks || tpo.setupTasks.length === 0) {
+            return [];
+        }
+        return tpo.setupTasks.map(group => ({
+            ...tpo,
+            currentGroupId: group.id,
+            displayItems: group.items
+        }));
+    }) as FlattenedLibraryItem[];
+
+    // Filtering Logic (on flattened items)
+    const filteredItems = flattenedItems.filter(item => {
         const matchesSearch = searchQuery === '' ||
             item.criteria.checklist.toLowerCase().includes(searchQuery.toLowerCase()) ||
             item.job.toLowerCase().includes(searchQuery.toLowerCase()) ||
             item.tpo.occasion.toLowerCase().includes(searchQuery.toLowerCase());
 
-        const matchesOccasion = !selectedOccasion || item.tpo.occasion === selectedOccasion;
-        const matchesTeam = !selectedTeam || item.team === selectedTeam;
-        const matchesJob = !selectedJob || item.job === selectedJob;
-        // Mode is placeholder for now (all are '표준')
+        const matchesOccasion = selectedOccasion.length === 0 || selectedOccasion.includes(item.tpo.occasion);
+        const matchesTeam = selectedTeam.length === 0 || selectedTeam.includes(item.team);
+        const matchesJob = selectedJob.length === 0 || selectedJob.includes(item.job);
         const matchesMode = selectedMode === '전체' || selectedMode === '표준';
 
         return matchesSearch && matchesOccasion && matchesTeam && matchesJob && matchesMode;
     });
 
-    // Categorize by team (key) instead of place
     const teamKeys = Array.from(new Set(filteredItems.map(t => t.team))).sort();
 
     const resetFilters = () => {
         setSearchQuery('');
-        setSelectedOccasion(null);
-        setSelectedTeam(null);
-        setSelectedJob(null);
+        setSelectedOccasion([]);
+        setSelectedTeam([]);
+        setSelectedJob([]);
         setSelectedMode('전체');
     };
 
@@ -127,11 +144,11 @@ export const InstructionLibrary: React.FC = () => {
                         {occasions.map(occ => (
                             <span
                                 key={occ}
-                                onClick={() => setSelectedOccasion(selectedOccasion === occ ? null : occ)}
+                                onClick={() => setSelectedOccasion(prev => prev.includes(occ) ? prev.filter(o => o !== occ) : [...prev, occ])}
                                 style={{
                                     padding: '6px 12px',
-                                    backgroundColor: selectedOccasion === occ ? colors.primaryBlue : '#F3F4F6',
-                                    color: selectedOccasion === occ ? 'white' : colors.textDark,
+                                    backgroundColor: selectedOccasion.includes(occ) ? colors.primaryBlue : '#F3F4F6',
+                                    color: selectedOccasion.includes(occ) ? 'white' : colors.textDark,
                                     borderRadius: '15px',
                                     fontSize: '0.8rem',
                                     fontWeight: 'bold',
@@ -150,13 +167,13 @@ export const InstructionLibrary: React.FC = () => {
                         {Object.keys(teamJobMap).map(team => (
                             <div key={team}>
                                 <div
-                                    onClick={() => setSelectedTeam(selectedTeam === team ? null : team)}
+                                    onClick={() => setSelectedTeam(prev => prev.includes(team) ? prev.filter(t => t !== team) : [...prev, team])}
                                     style={{
                                         fontWeight: 'bold',
                                         fontSize: '0.9rem',
                                         marginBottom: '8px',
                                         cursor: 'pointer',
-                                        color: selectedTeam === team ? colors.primaryBlue : colors.textDark
+                                        color: selectedTeam.includes(team) ? colors.primaryBlue : colors.textDark
                                     }}
                                 >
                                     {team}
@@ -165,15 +182,15 @@ export const InstructionLibrary: React.FC = () => {
                                     {teamJobMap[team].map(job => (
                                         <span
                                             key={job}
-                                            onClick={() => setSelectedJob(selectedJob === job ? null : job)}
+                                            onClick={() => setSelectedJob(prev => prev.includes(job) ? prev.filter(j => j !== job) : [...prev, job])}
                                             style={{
                                                 padding: '4px 8px',
-                                                border: `1px solid ${selectedJob === job || selectedTeam === team ? colors.primaryBlue : colors.border}`,
+                                                border: `1px solid ${selectedJob.includes(job) || selectedTeam.includes(team) ? colors.primaryBlue : colors.border}`,
                                                 borderRadius: '4px',
                                                 fontSize: '0.75rem',
-                                                color: selectedJob === job || selectedTeam === team ? colors.primaryBlue : colors.textGray,
+                                                color: selectedJob.includes(job) || selectedTeam.includes(team) ? colors.primaryBlue : colors.textGray,
                                                 cursor: 'pointer',
-                                                backgroundColor: selectedJob === job || selectedTeam === team ? '#E3F2FD' : 'white'
+                                                backgroundColor: selectedJob.includes(job) || selectedTeam.includes(team) ? '#E3F2FD' : 'white'
                                             }}
                                         >
                                             {job}
@@ -239,12 +256,19 @@ export const InstructionLibrary: React.FC = () => {
                     data={selectedDetailItem}
                     onClose={() => setDetailModalOpen(false)}
                     onAddToBoard={() => {
-                        if (selectedDetailItem.setupTasks && selectedDetailItem.setupTasks.length > 0) {
+                        const groupId = (selectedDetailItem as FlattenedLibraryItem).currentGroupId;
+                        if (groupId) {
+                            handleToggleBoard(groupId);
+                        } else if (selectedDetailItem.setupTasks?.[0]) {
                             handleToggleBoard(selectedDetailItem.setupTasks[0].id);
                         }
                         setDetailModalOpen(false);
                     }}
-                    isDeployed={Boolean(selectedDetailItem.setupTasks?.[0] && isDeployed(selectedDetailItem.setupTasks[0].id))}
+                    isDeployed={Boolean(
+                        (selectedDetailItem as FlattenedLibraryItem).currentGroupId
+                            ? isDeployed((selectedDetailItem as FlattenedLibraryItem).currentGroupId)
+                            : (selectedDetailItem.setupTasks?.[0] && isDeployed(selectedDetailItem.setupTasks[0].id))
+                    )}
                 />
             )}
         </div>

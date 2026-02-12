@@ -22,7 +22,7 @@ function DashboardContent() {
                 {activePhase === 'command' && <CommandCenterContent />}
                 {activePhase === 'plan' && <PlanPhaseContent />}
                 {activePhase === 'do' && <DoPhaseContent />}
-                {activePhase === 'check' && <CheckPhaseContent colors={colors} />}
+                {activePhase === 'check' && <CheckPhaseContent />}
                 {activePhase === 'act' && <ActPhaseContent />}
             </main>
         </div>

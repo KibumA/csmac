@@ -11,11 +11,13 @@ import {
     DropAnimation
 } from '@dnd-kit/core';
 import { usePDCA } from '../../../context/PDCAContext';
+import { useToast } from '../../../context/ToastContext';
 import { colors } from '../../../styles/theme';
 import { TeamMember, TaskCardData, RegisteredTpo } from '@csmac/types';
 import { getStageFromTpo } from '../../../utils/tpoUtils';
 import { TeamRosterPanel } from './InstructionBoard/TeamRosterPanel';
 import { TaskTemplateBoard } from './InstructionBoard/TaskTemplateBoard';
+import { LibraryDetailModal } from './LibraryDetailModal';
 import { User, Send } from 'lucide-react';
 
 // ─── Static Team Rosters (realistic headcounts per role) ───
@@ -99,10 +101,10 @@ const TEAM_ROSTERS: Record<string, TeamMember[]> = {
         { id: 'member-mg-3', name: '이수정', role: '인사(HRD)', status: 'working', shift: 'Day' },
         { id: 'member-mg-4', name: '한경민', role: '인사(HRD)', status: 'break', shift: 'Day' },
         { id: 'member-mg-5', name: '임세환', role: '인사(HRD)', status: 'working', shift: 'Day' },
-        // 상황실 관리자 3명
-        { id: 'member-mg-6', name: '박성훈', role: '상황실 관리자', status: 'working', shift: 'Day' },
-        { id: 'member-mg-7', name: '정보경', role: '상황실 관리자', status: 'working', shift: 'Day' },
-        { id: 'member-mg-8', name: '강호진', role: '상황실 관리자', status: 'off', shift: 'Day' },
+        // 업무지시 보드 관리자 3명
+        { id: 'member-mg-6', name: '박성훈', role: '업무지시 보드 관리자', status: 'working', shift: 'Day' },
+        { id: 'member-mg-7', name: '정보경', role: '업무지시 보드 관리자', status: 'working', shift: 'Day' },
+        { id: 'member-mg-8', name: '강호진', role: '업무지시 보드 관리자', status: 'off', shift: 'Day' },
     ],
 };
 
@@ -150,46 +152,96 @@ const DEMO_SCENARIOS: RegisteredTpo[] = [
 
 export const InstructionBoard = () => {
     const {
-        workplace, setWorkplace,
-        team, setTeam,
-        teams,
         registeredTpos,
-        assignments, setAssignments, batchDeployTasks
+        teams,
+        assignments, setAssignments, batchDeployTasks,
+        instructionBoardWorkplace, setInstructionBoardWorkplace,
+        instructionBoardTeams, setInstructionBoardTeams,
+        instructionBoardJobs, setInstructionBoardJobs
     } = usePDCA();
+    const { addToast } = useToast();
 
-    // 1. Local State
-    const [activeJobFilter, setActiveJobFilter] = useState<string>('전체');
     const [activeDraggable, setActiveDraggable] = useState<TeamMember | null>(null);
+    const [selectedTask, setSelectedTask] = useState<TaskCardData | null>(null);
+
+    // ─── Helper Functions ───
+    const toggleFilter = React.useCallback((
+        prev: string[],
+        item: string,
+        onTeamChange?: () => void
+    ) => {
+        let next: string[];
+        if (item === '전체') {
+            next = ['전체'];
+        } else if (prev.includes('전체')) {
+            next = [item];
+        } else if (prev.includes(item)) {
+            const filtered = prev.filter(i => i !== item);
+            next = filtered.length === 0 ? ['전체'] : filtered;
+        } else {
+            next = [...prev, item];
+        }
+
+        if (onTeamChange) onTeamChange();
+        return next;
+    }, []);
+
+    const handleTeamClick = React.useCallback((teamKey: string) => {
+        setInstructionBoardTeams(prev => toggleFilter(prev, teamKey, () => setInstructionBoardJobs(['전체'])));
+    }, [toggleFilter, setInstructionBoardTeams, setInstructionBoardJobs]);
+
+    const handleJobClick = React.useCallback((jobKey: string) => {
+        setInstructionBoardJobs(prev => toggleFilter(prev, jobKey));
+    }, [toggleFilter, setInstructionBoardJobs]);
+
+    // Sync with global context only on initial mount or when explicitly needed?
+    // User wants independence, so let's keep them as local state initialized from context.
 
     // 2. Computed Data
-    const currentTeamJobs = useMemo(() => teams[team]?.jobs || [], [team, teams]);
+    const currentTeamJobs = useMemo(() => {
+        if (instructionBoardTeams.includes('전체')) {
+            const allJobs = new Set<string>();
+            Object.values(teams).forEach(t => t.jobs.forEach(j => allJobs.add(j)));
+            return Array.from(allJobs);
+        }
+        const jobs = new Set<string>();
+        instructionBoardTeams.forEach(t => {
+            teams[t]?.jobs.forEach(j => jobs.add(j));
+        });
+        return Array.from(jobs);
+    }, [instructionBoardTeams, teams]);
 
     const teamMembers = useMemo(() => {
-        return TEAM_ROSTERS[team] || [];
-    }, [team]);
+        if (instructionBoardTeams.includes('전체')) {
+            return Object.values(TEAM_ROSTERS).flat();
+        }
+        return instructionBoardTeams.flatMap(t => TEAM_ROSTERS[t] || []);
+    }, [instructionBoardTeams]);
 
     // Transform RegisteredTpos to TaskCardData structure with Stages
     // Merge DB data + demo scenarios for pre/post columns
     const activeTasks: TaskCardData[] = useMemo(() => {
-        const registeredTpos = (usePDCA() as any).registeredTpos || []; // Fallback to raw list if byTeam is missing
-        const dbTasks = registeredTpos
-            .filter((t: any) => t.team === team)
-            .map((t: any) => ({
-                ...t,
-                stage: getStageFromTpo(t.tpo.time, t.tpo.occasion),
-                assignedMemberIds: assignments[t.id] || []
-            }));
+        if (!registeredTpos) return [];
 
-        const demoTasks = DEMO_SCENARIOS
-            .filter((t: any) => t.team === team)
-            .map((t: any) => ({
-                ...t,
-                stage: getStageFromTpo(t.tpo.time, t.tpo.occasion),
-                assignedMemberIds: assignments[t.id] || []
-            }));
+        const isTeamMatch = (t: string) => instructionBoardTeams.includes('전체') || instructionBoardTeams.includes(t);
+        const isJobMatch = (j: string) => instructionBoardJobs.includes('전체') || instructionBoardJobs.includes(j);
 
-        return [...demoTasks, ...dbTasks];
-    }, [team, assignments]);
+        const filterTask = (t: RegisteredTpo) =>
+            t.workplace === instructionBoardWorkplace &&
+            isTeamMatch(t.team) &&
+            isJobMatch(t.job);
+
+        const mapTask = (t: RegisteredTpo) => ({
+            ...t,
+            stage: getStageFromTpo(t.tpo.time, t.tpo.occasion),
+            assignedMemberIds: assignments[t.id] || []
+        });
+
+        return [
+            ...DEMO_SCENARIOS.filter(filterTask).map(mapTask),
+            ...registeredTpos.filter(filterTask).map(mapTask)
+        ];
+    }, [instructionBoardWorkplace, instructionBoardTeams, instructionBoardJobs, assignments, registeredTpos]);
 
     // 3. DnD Sensors
     const sensors = useSensors(
@@ -201,23 +253,38 @@ export const InstructionBoard = () => {
     );
 
     // 4. Handlers
-    const handleDragStart = (event: DragStartEvent) => {
+    const handleDragStart = React.useCallback((event: DragStartEvent) => {
         if (event.active.data.current?.type === 'member') {
             setActiveDraggable(event.active.data.current.member as TeamMember);
         }
-    };
+    }, []);
 
-    const handleDragEnd = (event: DragEndEvent) => {
+    const handleDragEnd = React.useCallback((event: DragEndEvent) => {
         const { active, over } = event;
         setActiveDraggable(null);
 
         if (over && active.data.current?.type === 'member') {
             const memberId = active.id as string;
             const taskIdStr = over.id as string;
+            const member = active.data.current.member as TeamMember;
 
             // Check if dropped on a task
             if (taskIdStr.startsWith('task-')) {
                 const taskId = parseInt(taskIdStr.replace('task-', ''));
+                const task = activeTasks.find(t => t.id === taskId);
+
+                // --- Guard 1: Off-duty check ---
+                if (member.status === 'off') {
+                    if (!confirm(`${member.name}님은 현재 '휴무' 상태입니다. 업무를 배정하시겠습니까?`)) {
+                        return;
+                    }
+                }
+
+                // --- Guard 2: Veteran task check ---
+                if (task?.isVeteran && !['지배인', '인스펙터', '엔지니어', '업무지시 보드 관리자'].includes(member.role)) {
+                    addToast(`이 업무는 '베테랑' 전용 업무입니다. ${member.role} 직무의 ${member.name}님에게 배정할 수 없습니다.`, 'warning', 4000);
+                    return;
+                }
 
                 // Update assignment
                 setAssignments(prev => {
@@ -230,20 +297,24 @@ export const InstructionBoard = () => {
                 });
             }
         }
-    };
+    }, [activeTasks, setAssignments]);
 
-    const handleUnassign = (taskId: number, memberId: string) => {
+    const handleUnassign = React.useCallback((taskId: number, memberId: string) => {
         setAssignments(prev => ({
             ...prev,
             [taskId]: (prev[taskId] || []).filter(id => id !== memberId)
         }));
-    };
+    }, [setAssignments]);
+
+    const handleViewDetail = React.useCallback((task: TaskCardData) => {
+        setSelectedTask(task);
+    }, []);
 
     const handleBatchDeploy = async () => {
         await batchDeployTasks();
     };
 
-    const dropAnimation: DropAnimation = {
+    const dropAnimation: DropAnimation = useMemo(() => ({
         sideEffects: defaultDropAnimationSideEffects({
             styles: {
                 active: {
@@ -251,7 +322,7 @@ export const InstructionBoard = () => {
                 },
             },
         }),
-    };
+    }), []);
 
     return (
         <DndContext
@@ -266,80 +337,150 @@ export const InstructionBoard = () => {
                 border: `1px solid ${colors.border}`,
                 overflow: 'hidden'
             }}>
-                {/* Top Control Bar */}
+                {/* Top Control Bar (3 Rows for Perfect Alignment) */}
                 <div style={{
-                    padding: '16px 24px', borderBottom: `1px solid ${colors.border}`,
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    padding: '12px 20px', borderBottom: `1px solid ${colors.border}`,
+                    display: 'flex', flexDirection: 'column', gap: '14px',
                     backgroundColor: 'white'
                 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                        <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#1E293B' }}>업무지시 상황실 (Control Tower)</h2>
-                        <div style={{ height: '24px', width: '1px', backgroundColor: '#D1D5DB', margin: '0 8px' }}></div>
-
-                        {/* Filters */}
+                    {/* Row 1: Workplace (Independent) */}
+                    <div style={{ display: 'flex', alignItems: 'center' }}>
                         <select
-                            value={workplace}
-                            onChange={(e) => setWorkplace(e.target.value)}
+                            value={instructionBoardWorkplace}
+                            onChange={(e) => setInstructionBoardWorkplace(e.target.value)}
                             style={{
-                                border: `1px solid ${colors.border}`, borderRadius: '6px',
-                                padding: '6px 12px', fontSize: '0.875rem', fontWeight: 'bold',
-                                color: '#374151', backgroundColor: 'white', cursor: 'pointer'
+                                border: 'none', borderRadius: '4px',
+                                padding: '4px 8px', fontSize: '0.75rem', fontWeight: 'bold',
+                                color: colors.textGray, backgroundColor: '#F1F5F9', cursor: 'pointer',
+                                outline: 'none'
                             }}
                         >
-                            <option value="소노벨 천안">소노벨 천안</option>
-                            <option value="소노벨 경주">소노벨 경주</option>
-                        </select>
-                        <select
-                            value={team}
-                            onChange={(e) => setTeam(e.target.value)}
-                            style={{
-                                border: `1px solid ${colors.border}`, borderRadius: '6px',
-                                padding: '6px 12px', fontSize: '0.875rem', fontWeight: 'bold',
-                                color: '#374151', backgroundColor: 'white', cursor: 'pointer'
-                            }}
-                        >
-                            {Object.entries(teams).map(([key, info]) => (
-                                <option key={key} value={key}>{info.label}</option>
-                            ))}
-                        </select>
-                        <select
-                            value={activeJobFilter}
-                            onChange={(e) => setActiveJobFilter(e.target.value)}
-                            style={{
-                                border: `1px solid ${colors.border}`, borderRadius: '6px',
-                                padding: '6px 12px', fontSize: '0.875rem',
-                                color: '#374151', backgroundColor: 'white', cursor: 'pointer'
-                            }}
-                        >
-                            <option value="전체">전체 직무</option>
-                            {currentTeamJobs.map(j => (
-                                <option key={j} value={j}>{j}</option>
-                            ))}
+                            <option value="소노벨 천안">📍 소노벨 천안</option>
+                            <option value="소노벨 경주">📍 소노벨 경주</option>
                         </select>
                     </div>
 
-                    <button
-                        onClick={handleBatchDeploy}
-                        style={{
-                            backgroundColor: colors.primaryBlue,
-                            color: 'white', padding: '8px 20px', borderRadius: '8px',
-                            fontWeight: 'bold', fontSize: '0.875rem',
-                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                            border: 'none', cursor: 'pointer',
-                            display: 'flex', alignItems: 'center', gap: '8px',
-                            transition: 'all 0.2s'
-                        }}
-                    >
-                        <Send size={16} />
-                        업무 지시 배포
-                    </button>
+                    {/* Row 2: Team Chips & Deploy Button */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        {/* Team Chips */}
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                            <button
+                                onClick={() => handleTeamClick('전체')}
+                                style={{
+                                    padding: '6px 14px',
+                                    borderRadius: '20px',
+                                    border: `1px solid ${instructionBoardTeams.includes('전체') ? colors.primaryBlue : colors.border}`,
+                                    backgroundColor: instructionBoardTeams.includes('전체') ? colors.primaryBlue : 'white',
+                                    color: instructionBoardTeams.includes('전체') ? 'white' : colors.textGray,
+                                    fontSize: '0.8125rem',
+                                    fontWeight: 'bold',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s',
+                                    boxShadow: instructionBoardTeams.includes('전체') ? '0 2px 4px rgba(0, 0, 0, 0.1)' : 'none'
+                                }}
+                            >
+                                전체
+                            </button>
+                            {Object.entries(teams).map(([key, info]) => {
+                                const isActive = instructionBoardTeams.includes(key);
+                                return (
+                                    <button
+                                        key={key}
+                                        onClick={() => handleTeamClick(key)}
+                                        style={{
+                                            padding: '6px 14px',
+                                            borderRadius: '20px',
+                                            border: `1px solid ${isActive ? colors.primaryBlue : colors.border}`,
+                                            backgroundColor: isActive ? colors.primaryBlue : 'white',
+                                            color: isActive ? 'white' : colors.textGray,
+                                            fontSize: '0.8125rem',
+                                            fontWeight: 'bold',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s',
+                                            boxShadow: isActive ? '0 2px 4px rgba(0, 0, 0, 0.1)' : 'none'
+                                        }}
+                                    >
+                                        {info.label}
+                                    </button>
+                                );
+                            })}
+                        </div>
+
+                        <button
+                            onClick={handleBatchDeploy}
+                            style={{
+                                backgroundColor: colors.primaryBlue,
+                                color: 'white', padding: '8px 20px', borderRadius: '8px',
+                                fontWeight: 'bold', fontSize: '0.875rem',
+                                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                                border: 'none', cursor: 'pointer',
+                                display: 'flex', alignItems: 'center', gap: '8px',
+                                transition: 'all 0.2s'
+                            }}
+                        >
+                            <Send size={16} />
+                            업무지시 배정
+                        </button>
+                    </div>
+
+                    {/* Row 3: Job Chips */}
+                    <div style={{
+                        display: 'flex', alignItems: 'center', gap: '12px',
+                        backgroundColor: '#F8FAFC', padding: '0 12px', borderRadius: '8px',
+                        border: '1px solid #F1F5F9', height: '48px', minHeight: '48px'
+                    }}>
+                        <div style={{
+                            display: 'flex', gap: '6px', alignItems: 'center',
+                            overflowX: 'auto', flex: 1, height: '100%'
+                        }}>
+                            <button
+                                onClick={() => handleJobClick('전체')}
+                                style={{
+                                    padding: '5px 12px',
+                                    borderRadius: '15px',
+                                    border: `1px solid ${instructionBoardJobs.includes('전체') ? '#64748B' : colors.border}`,
+                                    backgroundColor: instructionBoardJobs.includes('전체') ? '#64748B' : 'white',
+                                    color: instructionBoardJobs.includes('전체') ? 'white' : '#64748B',
+                                    fontSize: '0.75rem',
+                                    fontWeight: 'bold',
+                                    cursor: 'pointer',
+                                    whiteSpace: 'nowrap'
+                                }}
+                            >
+                                전체
+                            </button>
+                            {currentTeamJobs.map(j => {
+                                const isActive = instructionBoardJobs.includes(j);
+                                return (
+                                    <button
+                                        key={j}
+                                        onClick={() => handleJobClick(j)}
+                                        style={{
+                                            padding: '5px 12px',
+                                            borderRadius: '15px',
+                                            border: `1px solid ${isActive ? colors.primaryBlue : colors.border}`,
+                                            backgroundColor: isActive ? '#EFF6FF' : 'white',
+                                            color: isActive ? colors.primaryBlue : colors.textGray,
+                                            fontSize: '0.75rem',
+                                            fontWeight: isActive ? 'bold' : 'normal',
+                                            cursor: 'pointer',
+                                            whiteSpace: 'nowrap',
+                                            transition: 'all 0.2s'
+                                        }}
+                                    >
+                                        {j}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
                 </div>
 
                 {/* Main Split Layout */}
                 <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
                     {/* LEFT: Roster (Source) */}
                     <div style={{ width: '280px', minWidth: '280px' }}>
-                        <TeamRosterPanel members={teamMembers} jobFilter={activeJobFilter} />
+                        <TeamRosterPanel members={teamMembers} jobFilter={instructionBoardJobs} />
                     </div>
 
                     {/* RIGHT: Tasks (Target) */}
@@ -348,9 +489,18 @@ export const InstructionBoard = () => {
                         assignments={assignments}
                         members={teamMembers}
                         onUnassign={handleUnassign}
+                        onViewDetail={handleViewDetail}
                     />
                 </div>
             </div>
+
+            {selectedTask && (
+                <LibraryDetailModal
+                    data={selectedTask}
+                    onClose={() => setSelectedTask(null)}
+                    hideActionButton={true}
+                />
+            )}
 
             {/* Drag Overlay for Visual Feedback */}
             <DragOverlay dropAnimation={dropAnimation}>

@@ -32,11 +32,49 @@ export default function PlanPhaseContent() {
         isEditing,
         showTpoTooltip, setShowTpoTooltip,
         currentCriteria,
-        searchQuery, setSearchQuery,
         placeOccasionMapping,
-        addChecklistItem, removeChecklistItem, updateChecklistItemImage
+        addChecklistItem, removeChecklistItem, updateChecklistItemImage,
+        isSubmitting
     } = usePDCA();
     const [newItemInput, setNewItemInput] = React.useState('');
+
+    // --- Local Filter States for Registration List ---
+    const [localSearchQuery, setLocalSearchQuery] = React.useState('');
+    const [listFilterTeam, setListFilterTeam] = React.useState('전체');
+    const [listFilterJob, setListFilterJob] = React.useState('전체');
+
+    // Aggregate all unique jobs across all teams
+    const allUniqueJobs = React.useMemo(() => {
+        const set = new Set<string>();
+        Object.values(teams).forEach(t => {
+            t.jobs.forEach(j => set.add(j));
+        });
+        return Array.from(set).sort();
+    }, [teams]);
+
+    // Filter logic for the Registration List
+    const filteredList = React.useMemo(() => {
+        return registeredTpos.filter(item => {
+            // 1. Workplace Filter (Global)
+            if (item.workplace !== workplace) return false;
+
+            // 2. Team Filter (Local)
+            if (listFilterTeam !== '전체' && item.team !== listFilterTeam) return false;
+
+            // 3. Job Filter (Local)
+            if (listFilterJob !== '전체' && item.job !== listFilterJob) return false;
+
+            // 4. Search Filter (Local)
+            if (!localSearchQuery) return true;
+            const query = localSearchQuery.toLowerCase();
+            return (
+                item.job.toLowerCase().includes(query) ||
+                item.tpo.place.toLowerCase().includes(query) ||
+                item.tpo.occasion.toLowerCase().includes(query) ||
+                item.criteria.checklist.toLowerCase().includes(query)
+            );
+        });
+    }, [registeredTpos, workplace, listFilterTeam, listFilterJob, localSearchQuery]);
 
     return (
         <>
@@ -53,8 +91,28 @@ export default function PlanPhaseContent() {
                     {[
                         { label: '브랜드', value: 'Grand Walkerhill' },
                         { label: '사업장', value: workplace, setter: setWorkplace, options: ['소노벨 천안', '소노벨 경주'] },
-                        { label: '팀', value: team, setter: (v: string) => { setTeam(v); setJob(teams[v].jobs[0]); }, options: Object.keys(teams).map(k => ({ val: k, lab: teams[k].label })) },
-                        { label: '직무', value: job, setter: setJob, options: teams[team].jobs }
+                        {
+                            label: '팀',
+                            value: team,
+                            setter: (v: string) => {
+                                setTeam(v);
+                                if (v !== '전체' && teams[v]) {
+                                    setJob(teams[v].jobs[0]);
+                                } else {
+                                    setJob('전체');
+                                }
+                            },
+                            options: [
+                                { val: '전체', lab: '전체' },
+                                ...Object.keys(teams).map(k => ({ val: k, lab: teams[k].label }))
+                            ]
+                        },
+                        {
+                            label: '직무',
+                            value: job,
+                            setter: setJob,
+                            options: team !== '전체' && teams[team] ? teams[team].jobs : ['전체']
+                        }
                     ].map((cfg, i) => (
                         <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                             <label style={{ fontSize: '0.8rem', fontWeight: 'bold', color: colors.textGray }}>{cfg.label}</label>
@@ -80,13 +138,13 @@ export default function PlanPhaseContent() {
                     ))}
                 </div>
 
-                {/* Search Bar */}
+                {/* Search Bar (Decoupled) */}
                 <div style={{ position: 'relative', marginBottom: '25px' }}>
                     <input
                         type="text"
-                        placeholder="직무, 상황, 장소 등 키워드 검색..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="등록 양식용 직무, 상황 등 검색..."
+                        value={localSearchQuery}
+                        onChange={(e) => setLocalSearchQuery(e.target.value)}
                         style={{
                             width: '100%',
                             padding: '12px 15px 12px 40px',
@@ -374,16 +432,119 @@ export default function PlanPhaseContent() {
                     <button
                         type="button"
                         onClick={handleRegister}
-                        style={{ ...actionButtonStyle, backgroundColor: colors.primaryBlue, color: 'white' }}
+                        disabled={isSubmitting}
+                        style={{
+                            ...actionButtonStyle,
+                            backgroundColor: isSubmitting ? '#A0C4FF' : colors.primaryBlue,
+                            color: 'white',
+                            cursor: isSubmitting ? 'not-allowed' : 'pointer'
+                        }}
                     >
-                        {isEditing !== null ? '수정 완료' : '등록하기'}
+                        {isSubmitting ? '처리 중...' : (isEditing !== null ? '수정 완료' : '등록하기')}
                     </button>
                 </div>
 
                 {/* --- REGISTERED LIST SECTION --- */}
                 <div style={{ marginTop: '40px' }}>
-                    <div style={{ marginBottom: '15px' }}>
-                        <h2 style={{ fontSize: '1.1rem', fontWeight: 'bold', color: colors.textDark }}>TPO 등록 리스트</h2>
+                    <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                        <div>
+                            <h2 style={{ fontSize: '1.1rem', fontWeight: 'bold', color: colors.textDark }}>TPO 등록 리스트</h2>
+                            <p style={{ fontSize: '0.8rem', color: colors.textGray, marginTop: '4px' }}>{workplace} 사업장의 등록 현황입니다.</p>
+                        </div>
+
+                        {/* List Filters */}
+                        <div style={{ display: 'flex', gap: '15px', alignItems: 'flex-end' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                <label style={{ fontSize: '0.75rem', fontWeight: 'bold', color: colors.textGray, marginLeft: '4px' }}>팀 필터</label>
+                                <div style={{ display: 'flex', gap: '6px' }}>
+                                    <button
+                                        onClick={() => {
+                                            setListFilterTeam('전체');
+                                            setListFilterJob('전체');
+                                        }}
+                                        style={{
+                                            padding: '4px 12px',
+                                            borderRadius: '15px',
+                                            border: `1px solid ${listFilterTeam === '전체' ? colors.primaryBlue : colors.border}`,
+                                            backgroundColor: listFilterTeam === '전체' ? colors.primaryBlue : 'white',
+                                            color: listFilterTeam === '전체' ? 'white' : colors.textGray,
+                                            fontSize: '0.75rem',
+                                            fontWeight: 'bold',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s'
+                                        }}
+                                    >
+                                        전체
+                                    </button>
+                                    {Object.keys(teams).map(t => (
+                                        <button
+                                            key={t}
+                                            onClick={() => {
+                                                setListFilterTeam(t);
+                                                setListFilterJob('전체');
+                                            }}
+                                            style={{
+                                                padding: '4px 12px',
+                                                borderRadius: '15px',
+                                                border: `1px solid ${listFilterTeam === t ? colors.primaryBlue : colors.border}`,
+                                                backgroundColor: listFilterTeam === t ? colors.primaryBlue : 'white',
+                                                color: listFilterTeam === t ? 'white' : colors.textGray,
+                                                fontSize: '0.75rem',
+                                                fontWeight: 'bold',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.2s'
+                                            }}
+                                        >
+                                            {teams[t].label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div style={{ height: '24px', width: '1px', backgroundColor: '#E2E8F0', marginBottom: '6px' }}></div>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                <label style={{ fontSize: '0.75rem', fontWeight: 'bold', color: colors.textGray, marginLeft: '4px' }}>직무 필터</label>
+                                <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', maxWidth: '400px', paddingBottom: '2px' }}>
+                                    <button
+                                        onClick={() => setListFilterJob('전체')}
+                                        style={{
+                                            padding: '4px 12px',
+                                            borderRadius: '15px',
+                                            border: `1px solid ${listFilterJob === '전체' ? '#64748B' : colors.border}`,
+                                            backgroundColor: listFilterJob === '전체' ? '#64748B' : '#F8FAFC',
+                                            color: listFilterJob === '전체' ? 'white' : '#64748B',
+                                            fontSize: '0.75rem',
+                                            fontWeight: 'bold',
+                                            cursor: 'pointer',
+                                            whiteSpace: 'nowrap'
+                                        }}
+                                    >
+                                        전체 직무
+                                    </button>
+                                    {(listFilterTeam === '전체' ? allUniqueJobs : teams[listFilterTeam]?.jobs || []).map(j => (
+                                        <button
+                                            key={j}
+                                            onClick={() => setListFilterJob(j)}
+                                            style={{
+                                                padding: '4px 12px',
+                                                borderRadius: '15px',
+                                                border: `1px solid ${listFilterJob === j ? colors.primaryBlue : colors.border}`,
+                                                backgroundColor: listFilterJob === j ? '#EFF6FF' : 'white',
+                                                color: listFilterJob === j ? colors.primaryBlue : colors.textGray,
+                                                fontSize: '0.75rem',
+                                                fontWeight: listFilterJob === j ? 'bold' : 'normal',
+                                                cursor: 'pointer',
+                                                whiteSpace: 'nowrap',
+                                                transition: 'all 0.2s'
+                                            }}
+                                        >
+                                            {j}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <div style={{ overflowX: 'auto' }}>
@@ -400,8 +561,8 @@ export default function PlanPhaseContent() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {registeredTpos.length > 0 ? (
-                                    registeredTpos.map((item) => (
+                                {filteredList.length > 0 ? (
+                                    filteredList.map((item) => (
                                         <tr key={item.id} style={{ backgroundColor: isEditing === item.id ? colors.lightBlue : 'transparent' }}>
                                             <td style={{ ...tdStyle, textAlign: 'center' }}>
                                                 <div style={{ display: 'flex', gap: '5px', justifyContent: 'center' }}>
