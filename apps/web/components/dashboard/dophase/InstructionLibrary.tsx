@@ -13,9 +13,24 @@ interface FlattenedLibraryItem extends RegisteredTpo {
 }
 
 export const InstructionLibrary: React.FC = () => {
-    const { registeredTpos, deployedTaskGroupIds, deployToBoard, removeFromBoard, setupTasksToSop } = usePDCA();
+    const {
+        registeredTpos,
+        deployedTaskGroupIds,
+        deployToBoard,
+        removeFromBoard,
+        setupTasksToSop,
+        librarySearchQuery,
+        setLibrarySearchQuery,
+        librarySelectedOccasions,
+        setLibrarySelectedOccasions,
+        librarySelectedTeams,
+        setLibrarySelectedTeams,
+        librarySelectedJobs,
+        setLibrarySelectedJobs,
+        librarySelectedMode,
+        setLibrarySelectedMode
+    } = usePDCA();
     const { addToast } = useToast();
-    const [searchQuery, setSearchQuery] = useState('');
 
     const handleToggleBoard = (groupId: number) => {
         if (deployedTaskGroupIds.includes(groupId)) {
@@ -26,11 +41,6 @@ export const InstructionLibrary: React.FC = () => {
     };
 
     const isDeployed = (groupId: number) => deployedTaskGroupIds.includes(groupId);
-    const [selectedOccasion, setSelectedOccasion] = useState<string[]>([]);
-    const [selectedTeam, setSelectedTeam] = useState<string[]>([]);
-    const [selectedJob, setSelectedJob] = useState<string[]>([]);
-    const [selectedMode, setSelectedMode] = useState('전체');
-
     const [selectedDetailItem, setSelectedDetailItem] = useState<RegisteredTpo | null>(null);
     const [isDetailModalOpen, setDetailModalOpen] = useState(false);
 
@@ -58,15 +68,15 @@ export const InstructionLibrary: React.FC = () => {
 
     // Filtering Logic (on flattened items)
     const filteredItems = flattenedItems.filter(item => {
-        const matchesSearch = searchQuery === '' ||
-            item.criteria.checklist.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            item.job.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            item.tpo.occasion.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesSearch = librarySearchQuery === '' ||
+            item.criteria.checklist.toLowerCase().includes(librarySearchQuery.toLowerCase()) ||
+            item.job.toLowerCase().includes(librarySearchQuery.toLowerCase()) ||
+            item.tpo.occasion.toLowerCase().includes(librarySearchQuery.toLowerCase());
 
-        const matchesOccasion = selectedOccasion.length === 0 || selectedOccasion.includes(item.tpo.occasion);
-        const matchesTeam = selectedTeam.length === 0 || selectedTeam.includes(item.team);
-        const matchesJob = selectedJob.length === 0 || selectedJob.includes(item.job);
-        const matchesMode = selectedMode === '전체' || selectedMode === '표준';
+        const matchesOccasion = librarySelectedOccasions.length === 0 || librarySelectedOccasions.includes(item.tpo.occasion);
+        const matchesTeam = librarySelectedTeams.length === 0 || librarySelectedTeams.includes(item.team);
+        const matchesJob = librarySelectedJobs.length === 0 || librarySelectedJobs.includes(item.job);
+        const matchesMode = librarySelectedMode === '전체' || librarySelectedMode === '표준';
 
         return matchesSearch && matchesOccasion && matchesTeam && matchesJob && matchesMode;
     });
@@ -74,11 +84,11 @@ export const InstructionLibrary: React.FC = () => {
     const teamKeys = Array.from(new Set(filteredItems.map(t => t.team))).sort();
 
     const resetFilters = () => {
-        setSearchQuery('');
-        setSelectedOccasion([]);
-        setSelectedTeam([]);
-        setSelectedJob([]);
-        setSelectedMode('전체');
+        setLibrarySearchQuery('');
+        setLibrarySelectedOccasions([]);
+        setLibrarySelectedTeams([]);
+        setLibrarySelectedJobs([]);
+        setLibrarySelectedMode('전체');
     };
 
     return (
@@ -100,8 +110,8 @@ export const InstructionLibrary: React.FC = () => {
                     <input
                         type="text"
                         placeholder="업무명 / 직무 / TPO(상황)로 검색"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
+                        value={librarySearchQuery}
+                        onChange={(e) => setLibrarySearchQuery(e.target.value)}
                         style={{
                             width: '100%',
                             boxSizing: 'border-box',
@@ -119,16 +129,16 @@ export const InstructionLibrary: React.FC = () => {
                         {['전체', '표준', '베테랑'].map(mode => (
                             <button
                                 key={mode}
-                                onClick={() => setSelectedMode(mode)}
+                                onClick={() => setLibrarySelectedMode(mode)}
                                 style={{
                                     flex: 1,
                                     padding: '8px',
                                     border: 'none',
                                     borderRadius: '6px',
                                     fontSize: '0.85rem',
-                                    backgroundColor: selectedMode === mode ? 'white' : 'transparent',
-                                    fontWeight: selectedMode === mode ? 'bold' : 'normal',
-                                    boxShadow: selectedMode === mode ? '0 2px 4px rgba(0,0,0,0.1)' : 'none',
+                                    backgroundColor: librarySelectedMode === mode ? 'white' : 'transparent',
+                                    fontWeight: librarySelectedMode === mode ? 'bold' : 'normal',
+                                    boxShadow: librarySelectedMode === mode ? '0 2px 4px rgba(0,0,0,0.1)' : 'none',
                                     cursor: 'pointer'
                                 }}
                             >
@@ -144,11 +154,11 @@ export const InstructionLibrary: React.FC = () => {
                         {occasions.map(occ => (
                             <span
                                 key={occ}
-                                onClick={() => setSelectedOccasion(prev => prev.includes(occ) ? prev.filter(o => o !== occ) : [...prev, occ])}
+                                onClick={() => setLibrarySelectedOccasions(prev => prev.includes(occ) ? prev.filter(o => o !== occ) : [...prev, occ])}
                                 style={{
                                     padding: '6px 12px',
-                                    backgroundColor: selectedOccasion.includes(occ) ? colors.primaryBlue : '#F3F4F6',
-                                    color: selectedOccasion.includes(occ) ? 'white' : colors.textDark,
+                                    backgroundColor: librarySelectedOccasions.includes(occ) ? colors.primaryBlue : '#F3F4F6',
+                                    color: librarySelectedOccasions.includes(occ) ? 'white' : colors.textDark,
                                     borderRadius: '15px',
                                     fontSize: '0.8rem',
                                     fontWeight: 'bold',
@@ -167,13 +177,13 @@ export const InstructionLibrary: React.FC = () => {
                         {Object.keys(teamJobMap).map(team => (
                             <div key={team}>
                                 <div
-                                    onClick={() => setSelectedTeam(prev => prev.includes(team) ? prev.filter(t => t !== team) : [...prev, team])}
+                                    onClick={() => setLibrarySelectedTeams(prev => prev.includes(team) ? prev.filter(t => t !== team) : [...prev, team])}
                                     style={{
                                         fontWeight: 'bold',
                                         fontSize: '0.9rem',
                                         marginBottom: '8px',
                                         cursor: 'pointer',
-                                        color: selectedTeam.includes(team) ? colors.primaryBlue : colors.textDark
+                                        color: librarySelectedTeams.includes(team) ? colors.primaryBlue : colors.textDark
                                     }}
                                 >
                                     {team}
@@ -182,15 +192,15 @@ export const InstructionLibrary: React.FC = () => {
                                     {teamJobMap[team].map(job => (
                                         <span
                                             key={job}
-                                            onClick={() => setSelectedJob(prev => prev.includes(job) ? prev.filter(j => j !== job) : [...prev, job])}
+                                            onClick={() => setLibrarySelectedJobs(prev => prev.includes(job) ? prev.filter(j => j !== job) : [...prev, job])}
                                             style={{
                                                 padding: '4px 8px',
-                                                border: `1px solid ${selectedJob.includes(job) || selectedTeam.includes(team) ? colors.primaryBlue : colors.border}`,
+                                                border: `1px solid ${librarySelectedJobs.includes(job) || librarySelectedTeams.includes(team) ? colors.primaryBlue : colors.border}`,
                                                 borderRadius: '4px',
                                                 fontSize: '0.75rem',
-                                                color: selectedJob.includes(job) || selectedTeam.includes(team) ? colors.primaryBlue : colors.textGray,
+                                                color: librarySelectedJobs.includes(job) || librarySelectedTeams.includes(team) ? colors.primaryBlue : colors.textGray,
                                                 cursor: 'pointer',
-                                                backgroundColor: selectedJob.includes(job) || selectedTeam.includes(team) ? '#E3F2FD' : 'white'
+                                                backgroundColor: librarySelectedJobs.includes(job) || librarySelectedTeams.includes(team) ? '#E3F2FD' : 'white'
                                             }}
                                         >
                                             {job}

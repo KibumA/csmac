@@ -41,6 +41,17 @@ export interface DoContextType {
     setChecklistSearchQuery: (v: string) => void;
     checklistSelectedTeams: string[];
     setChecklistSelectedTeams: React.Dispatch<React.SetStateAction<string[]>>;
+    // Instruction Library Filter Persistence
+    librarySearchQuery: string;
+    setLibrarySearchQuery: (v: string) => void;
+    librarySelectedOccasions: string[];
+    setLibrarySelectedOccasions: React.Dispatch<React.SetStateAction<string[]>>;
+    librarySelectedTeams: string[];
+    setLibrarySelectedTeams: React.Dispatch<React.SetStateAction<string[]>>;
+    librarySelectedJobs: string[];
+    setLibrarySelectedJobs: React.Dispatch<React.SetStateAction<string[]>>;
+    librarySelectedMode: string;
+    setLibrarySelectedMode: (v: string) => void;
 }
 
 const DoContext = createContext<DoContextType | undefined>(undefined);
@@ -66,27 +77,45 @@ export const DoProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [checklistSearchQuery, setChecklistSearchQuery] = useState('');
     const [checklistSelectedTeams, setChecklistSelectedTeams] = useState<string[]>(['전체']);
 
+    // Instruction Library Filters
+    const [librarySearchQuery, setLibrarySearchQuery] = useState('');
+    const [librarySelectedOccasions, setLibrarySelectedOccasions] = useState<string[]>([]);
+    const [librarySelectedTeams, setLibrarySelectedTeams] = useState<string[]>([]);
+    const [librarySelectedJobs, setLibrarySelectedJobs] = useState<string[]>([]);
+    const [librarySelectedMode, setLibrarySelectedMode] = useState('전체');
+
     // Persistence for Checklist Filters
     React.useEffect(() => {
         const savedQuery = localStorage.getItem('checklist_search_query');
         const savedTeams = localStorage.getItem('checklist_selected_teams');
         if (savedQuery) setChecklistSearchQuery(savedQuery);
         if (savedTeams) {
-            try {
-                setChecklistSelectedTeams(JSON.parse(savedTeams));
-            } catch (e) {
-                console.error('Error parsing saved teams:', e);
-            }
+            try { setChecklistSelectedTeams(JSON.parse(savedTeams)); } catch (e) { console.error('Error parsing saved teams:', e); }
         }
+
+        // Persistence for Library Filters
+        const savedLibQuery = localStorage.getItem('library_search_query');
+        const savedLibOccasions = localStorage.getItem('library_selected_occasions');
+        const savedLibTeams = localStorage.getItem('library_selected_teams');
+        const savedLibJobs = localStorage.getItem('library_selected_jobs');
+        const savedLibMode = localStorage.getItem('library_selected_mode');
+
+        if (savedLibQuery) setLibrarySearchQuery(savedLibQuery);
+        if (savedLibOccasions) { try { setLibrarySelectedOccasions(JSON.parse(savedLibOccasions)); } catch (e) { } }
+        if (savedLibTeams) { try { setLibrarySelectedTeams(JSON.parse(savedLibTeams)); } catch (e) { } }
+        if (savedLibJobs) { try { setLibrarySelectedJobs(JSON.parse(savedLibJobs)); } catch (e) { } }
+        if (savedLibMode) setLibrarySelectedMode(savedLibMode);
     }, []);
 
-    React.useEffect(() => {
-        localStorage.setItem('checklist_search_query', checklistSearchQuery);
-    }, [checklistSearchQuery]);
+    React.useEffect(() => { localStorage.setItem('checklist_search_query', checklistSearchQuery); }, [checklistSearchQuery]);
+    React.useEffect(() => { localStorage.setItem('checklist_selected_teams', JSON.stringify(checklistSelectedTeams)); }, [checklistSelectedTeams]);
 
-    React.useEffect(() => {
-        localStorage.setItem('checklist_selected_teams', JSON.stringify(checklistSelectedTeams));
-    }, [checklistSelectedTeams]);
+    // Sync Library Filters
+    React.useEffect(() => { localStorage.setItem('library_search_query', librarySearchQuery); }, [librarySearchQuery]);
+    React.useEffect(() => { localStorage.setItem('library_selected_occasions', JSON.stringify(librarySelectedOccasions)); }, [librarySelectedOccasions]);
+    React.useEffect(() => { localStorage.setItem('library_selected_teams', JSON.stringify(librarySelectedTeams)); }, [librarySelectedTeams]);
+    React.useEffect(() => { localStorage.setItem('library_selected_jobs', JSON.stringify(librarySelectedJobs)); }, [librarySelectedJobs]);
+    React.useEffect(() => { localStorage.setItem('library_selected_mode', librarySelectedMode); }, [librarySelectedMode]);
 
     const deployedTaskGroupIds = React.useMemo(() => {
         return Array.from(new Set(
@@ -469,13 +498,19 @@ export const DoProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         instructionBoardTeams, setInstructionBoardTeams,
         instructionBoardJobs, setInstructionBoardJobs,
         checklistSearchQuery, setChecklistSearchQuery,
-        checklistSelectedTeams, setChecklistSelectedTeams
+        checklistSelectedTeams, setChecklistSelectedTeams,
+        librarySearchQuery, setLibrarySearchQuery,
+        librarySelectedOccasions, setLibrarySelectedOccasions,
+        librarySelectedTeams, setLibrarySelectedTeams,
+        librarySelectedJobs, setLibrarySelectedJobs,
+        librarySelectedMode, setLibrarySelectedMode
     }), [activeDoSubPhase, inspectionResults, addInspectionResult, isInspectionModalOpen, selectedInspectionSopId,
         jobInstructions, addJobInstruction, setupTasksToSop, handleRemoveSetupTask, handleEditSetupTask,
         deployedTaskGroupIds, deployToBoard, removeFromBoard, updateJobStatus, completeJobWithEvidence,
         assignments, batchDeployTasks,
         instructionBoardWorkplace, instructionBoardTeams, instructionBoardJobs,
-        checklistSearchQuery, checklistSelectedTeams]);
+        checklistSearchQuery, checklistSelectedTeams,
+        librarySearchQuery, librarySelectedOccasions, librarySelectedTeams, librarySelectedJobs, librarySelectedMode]);
 
     return (
         <DoContext.Provider value={value}>
