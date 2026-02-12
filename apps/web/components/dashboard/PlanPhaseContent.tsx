@@ -147,6 +147,7 @@ export default function PlanPhaseContent() {
                         onChange={(e) => setLocalSearchQuery(e.target.value)}
                         style={{
                             width: '100%',
+                            boxSizing: 'border-box',
                             padding: '12px 15px 12px 40px',
                             border: `1px solid ${colors.border}`,
                             borderRadius: '8px',
