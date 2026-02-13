@@ -3,7 +3,7 @@ import { JobInstruction, JobInstructionDB, InspectionRecord } from '@csmac/types
 /**
  * Maps Supabase DB record to frontend JobInstruction type
  */
-export const mapDbToJobInstruction = (item: any): JobInstruction => {
+export const mapDbToJobInstruction = (item: JobInstructionDB): JobInstruction => {
     return {
         id: item.id,
         targetTeam: item.team,
@@ -19,7 +19,7 @@ export const mapDbToJobInstruction = (item: any): JobInstruction => {
         aiAnalysis: item.ai_analysis,
         feedbackComment: item.feedback_comment,
         verificationResult: item.verification_result,
-        evidenceUrl: item.evidence_url,
+        evidenceUrl: item.evidence_url ?? undefined,
         tpo_id: item.tpo_id,
         taskGroupId: item.task_group_id
     };
@@ -28,7 +28,7 @@ export const mapDbToJobInstruction = (item: any): JobInstruction => {
 /**
  * Maps Supabase DB record (job_instructions) to frontend InspectionRecord type
  */
-export const mapDbToInspectionRecord = (item: any): InspectionRecord => {
+export const mapDbToInspectionRecord = (item: JobInstructionDB): InspectionRecord => {
     const status: 'O' | 'X' = item.status === 'completed' ? 'O' : 'X';
 
     const timeStr = item.completed_at ? new Date(item.completed_at).toLocaleString('ko-KR', {
@@ -45,12 +45,12 @@ export const mapDbToInspectionRecord = (item: any): InspectionRecord => {
     return {
         id: item.id,
         time: timeStr,
-        name: item.assignee ? item.assignee.split(' (')[0] : null,
+        name: (item.assignee ? item.assignee.split(' (')[0] : null) || '미배정',
         area: area,
         item: workItem,
         status: status,
         role: item.team,
-        reason: item.description,
+        reason: item.description ?? undefined,
         tpoId: item.tpo_id || 0
     };
 };

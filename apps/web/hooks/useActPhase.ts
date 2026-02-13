@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { usePDCA } from '../context/PDCAContext';
 import { useVerificationPersistence } from './useVerificationPersistence';
 import { JobInstruction } from '@csmac/types';
+import { mapDbToJobInstruction } from '../utils/instructionUtils';
 
 export interface StaffLog {
     id: number;
@@ -71,24 +72,7 @@ export function useActPhase() {
         });
 
         if (allJobs) {
-            const mappedJobs: JobInstruction[] = allJobs.map((j: any) => ({
-                id: j.id,
-                targetTeam: j.team,
-                team: j.team,
-                assignee: j.assignee ? j.assignee.split(' (')[0] : null,
-                subject: j.subject,
-                description: j.description || '',
-                deadline: j.deadline || '',
-                status: j.status,
-                timestamp: j.completed_at || j.created_at,
-                created_at: j.created_at,
-                evidenceUrl: j.evidence_url || undefined,
-                verificationResult: j.verification_result,
-                aiScore: j.ai_score,
-                aiAnalysis: j.ai_analysis,
-                feedbackComment: j.feedback_comment,
-                tpo_id: j.tpo_id
-            }));
+            const mappedJobs: JobInstruction[] = allJobs.map(j => mapDbToJobInstruction(j));
 
             const mergedJobs = mergeWithMockData(mappedJobs);
 

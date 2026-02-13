@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../utils/supabaseClient';
-import { JobInstruction } from '@csmac/types';
+import { JobInstruction, JobInstructionDB, RegisteredTpo } from '@csmac/types';
 import { usePDCA } from '../context/PDCAContext';
 import { simulateAIAnalysis } from '../utils/aiSimulation';
 import { useVerificationPersistence } from './useVerificationPersistence';
+import { mapDbToJobInstruction } from '../utils/instructionUtils';
 
 export function useCheckPhase() {
     const { team, registeredTpos, resolveActionItem } = usePDCA();
@@ -24,24 +25,7 @@ export function useCheckPhase() {
             .order('completed_at', { ascending: false });
 
         if (data) {
-            const mapped: JobInstruction[] = data.map((item: any) => ({
-                id: item.id,
-                targetTeam: item.team,
-                assignee: item.assignee ? item.assignee.split(' (')[0] : null,
-                subject: item.subject,
-                description: item.description || '',
-                deadline: item.deadline || '',
-                status: item.status,
-                timestamp: item.completed_at || item.created_at,
-                team: item.team,
-                created_at: item.created_at,
-                evidenceUrl: item.evidence_url,
-                verificationResult: item.verification_result,
-                aiScore: item.ai_score,
-                aiAnalysis: item.ai_analysis,
-                feedbackComment: item.feedback_comment,
-                tpo_id: item.tpo_id
-            }));
+            const mapped: JobInstruction[] = data.map((item: JobInstructionDB) => mapDbToJobInstruction(item));
 
             setVerificationList(mergeWithMockData(mapped));
         }
@@ -105,7 +89,7 @@ export function useCheckPhase() {
     };
 
     const selectedItem = verificationList.find(i => i.id === selectedId);
-    const standardTpo = registeredTpos.find((t: any) => t.id === selectedItem?.tpo_id);
+    const standardTpo = registeredTpos.find((t: RegisteredTpo) => t.id === selectedItem?.tpo_id);
     const standardImage = standardTpo?.criteria.items.find((i: any) => i.imageUrl)?.imageUrl;
 
     return {
