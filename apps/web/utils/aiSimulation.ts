@@ -22,32 +22,31 @@ const PASS_COMMENTS = [
 ];
 
 export const simulateAIAnalysis = (item: JobInstruction): AIAnalysisResult => {
-    // Generate a semi-random score that correlates somewhat with existing status
-    // but adds variety for demonstration.
+    // Determine target outcome based on item status
+    // If it's already marked as 'non_compliant' or failed in verification, force a low score.
+    const shouldFail = item.status === 'non_compliant' || item.verificationResult === 'fail';
+
     let score: number;
+    let analysis: string;
 
-    if (item.subject.includes('VIP') || item.subject.includes('긴급')) {
-        // High priority items have more variance in simulation
-        score = Math.floor(Math.random() * 40) + 60; // 60-100
+    if (shouldFail) {
+        // Fail Scenario: Score between 40 and 79
+        score = Math.floor(Math.random() * 40) + 40;
+        analysis = FAIL_REASONS[Math.floor(Math.random() * FAIL_REASONS.length)];
     } else {
-        score = Math.floor(Math.random() * 30) + 70; // 70-100
-    }
-
-    // Force some failures for "non_compliant" or specific keywords
-    if (item.status === 'non_compliant' || item.subject.includes('점검')) {
-        if (Math.random() > 0.6) {
-            score = Math.floor(Math.random() * 30) + 40; // 40-70
+        // Pass Scenario: Score between 80 and 100
+        // Add some variety based on subject for realism
+        if (item.subject.includes('VIP')) {
+            score = Math.floor(Math.random() * 10) + 90; // 90-100 for VIP
+        } else {
+            score = Math.floor(Math.random() * 20) + 80; // 80-100 standard
         }
+        analysis = PASS_COMMENTS[Math.floor(Math.random() * PASS_COMMENTS.length)];
     }
-
-    const isPass = score >= 80;
-    const analysis = isPass
-        ? PASS_COMMENTS[Math.floor(Math.random() * PASS_COMMENTS.length)]
-        : FAIL_REASONS[Math.floor(Math.random() * FAIL_REASONS.length)];
 
     return {
         score,
         analysis,
-        isPass
+        isPass: score >= 80
     };
 };

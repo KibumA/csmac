@@ -30,12 +30,12 @@ export interface StaffData {
 }
 
 const MOCK_USERS: Record<string, Partial<StaffData>> = {
-    '프론트': { name: '김철수', role: '지배인', shift: 'Day', accuracy: '89%', speed: '85%', loyalty: '90%', share: '95%', total: '88' },
-    '객실관리': { name: '박미숙', role: '인스펙터', shift: 'Evening', accuracy: '100%', speed: '85%', loyalty: '90%', share: '95%', total: '92' },
-    '시설': { name: '김태섭', role: '엔지니어', shift: 'Morning', accuracy: '100%', speed: '85%', loyalty: '90%', share: '95%', total: '92' },
-    '고객지원/CS': { name: '김나연', role: '컨택센터 상담원', shift: 'Night', accuracy: '100%', speed: '85%', loyalty: '90%', share: '95%', total: '92' },
-    'f&b': { name: '김지훈', role: '마케팅전략팀', shift: 'Day', accuracy: '100%', speed: '85%', loyalty: '90%', share: '95%', total: '92' },
-    '기타': { name: '김관호', role: '교육개발팀', shift: 'Day', accuracy: '100%', speed: '85%', loyalty: '90%', share: '95%', total: '92' }
+    '김철수': { name: '김철수', role: '지배인', shift: 'Day', accuracy: '89%', speed: '85%', loyalty: '90%', share: '95%', total: '88' },
+    '박미숙': { name: '박미숙', role: '인스펙터', shift: 'Evening', accuracy: '100%', speed: '85%', loyalty: '90%', share: '95%', total: '92' },
+    '김태섭': { name: '김태섭', role: '엔지니어', shift: 'Morning', accuracy: '100%', speed: '85%', loyalty: '90%', share: '95%', total: '92' },
+    '김나연': { name: '김나연', role: '컨택센터 상담원', shift: 'Night', accuracy: '100%', speed: '85%', loyalty: '90%', share: '95%', total: '92' },
+    '김지훈': { name: '김지훈', role: '마케팅전략팀', shift: 'Day', accuracy: '100%', speed: '85%', loyalty: '90%', share: '95%', total: '92' },
+    '김관호': { name: '김관호', role: '교육개발팀', shift: 'Day', accuracy: '100%', speed: '85%', loyalty: '90%', share: '95%', total: '92' }
 };
 
 export function useActPhase() {
@@ -75,7 +75,7 @@ export function useActPhase() {
                 id: j.id,
                 targetTeam: j.team,
                 team: j.team,
-                assignee: j.assignee || '담당자',
+                assignee: j.assignee ? j.assignee.split(' (')[0] : null,
                 subject: j.subject,
                 description: j.description || '',
                 deadline: j.deadline || '',
@@ -93,14 +93,31 @@ export function useActPhase() {
             const mergedJobs = mergeWithMockData(mappedJobs);
 
             mergedJobs.forEach(job => {
-                const teamKey = Object.keys(MOCK_USERS).find(k => job.team.includes(k)) || '프론트';
-                if (!groups[teamKey]) {
-                    groups[teamKey] = {
-                        id: teamKey, name: `${teamKey} 담당자`, role: 'Staff', shift: 'Day',
-                        status: 'GOOD', counts: { total: 0, ok: 0, non: 0, delay: 0 }, logs: []
+                // Find user by name (assignee)
+                // If assignee is null, we might skip or put in a 'Unknown' bucket.
+                // For now, we only track users defined in MOCK_USERS to match the dashboard design.
+                const assigneeName = job.assignee;
+                if (!assigneeName || !MOCK_USERS[assigneeName]) return;
+
+                if (!groups[assigneeName]) {
+                    // Initialize with MOCK_USERS data if not already present
+                    const mock = MOCK_USERS[assigneeName];
+                    groups[assigneeName] = {
+                        id: assigneeName,
+                        name: mock.name!,
+                        role: mock.role!,
+                        shift: mock.shift!,
+                        accuracy: mock.accuracy,
+                        speed: mock.speed,
+                        loyalty: mock.loyalty,
+                        share: mock.share,
+                        total: mock.total,
+                        status: 'GOOD',
+                        counts: { total: 0, ok: 0, non: 0, delay: 0 },
+                        logs: []
                     };
                 }
-                const g = groups[teamKey];
+                const g = groups[assigneeName];
 
                 const isRisk = job.status === 'non_compliant' || job.verificationResult === 'fail';
 

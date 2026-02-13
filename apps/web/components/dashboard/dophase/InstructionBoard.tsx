@@ -15,98 +15,11 @@ import { useToast } from '../../../context/ToastContext';
 import { colors } from '../../../styles/theme';
 import { TeamMember, TaskCardData, RegisteredTpo } from '@csmac/types';
 import { getStageFromTpo } from '../../../utils/tpoUtils';
+import { TEAM_ROSTERS } from '../../../constants/team-rosters';
 import { TeamRosterPanel } from './InstructionBoard/TeamRosterPanel';
 import { TaskTemplateBoard } from './InstructionBoard/TaskTemplateBoard';
 import { LibraryDetailModal } from './LibraryDetailModal';
 import { User, Send } from 'lucide-react';
-
-// ─── Static Team Rosters (realistic headcounts per role) ───
-const TEAM_ROSTERS: Record<string, TeamMember[]> = {
-    '프론트': [
-        // 지배인 1명
-        { id: 'member-front-0', name: '김철수', role: '지배인', status: 'working', shift: 'Day' },
-        // 리셉션 5명
-        { id: 'member-front-1', name: '이영희', role: '리셉션', status: 'working', shift: 'Day' },
-        { id: 'member-front-2', name: '노현우', role: '리셉션', status: 'working', shift: 'Day' },
-        { id: 'member-front-3', name: '배수진', role: '리셉션', status: 'working', shift: 'Day' },
-        { id: 'member-front-4', name: '오세진', role: '리셉션', status: 'break', shift: 'Day' },
-        { id: 'member-front-5', name: '권도현', role: '리셉션', status: 'working', shift: 'Day' },
-        // 컨시어즈 3명
-        { id: 'member-front-6', name: '최윤서', role: '컨시어즈', status: 'working', shift: 'Day' },
-        { id: 'member-front-7', name: '윤하준', role: '컨시어즈', status: 'working', shift: 'Day' },
-        { id: 'member-front-8', name: '정다은', role: '컨시어즈', status: 'off', shift: 'Day' },
-    ],
-    '객실관리': [
-        // 인스펙터 3명
-        { id: 'member-hk-0', name: '박미숙', role: '인스펙터', status: 'working', shift: 'Day' },
-        { id: 'member-hk-1', name: '최영미', role: '인스펙터', status: 'working', shift: 'Day' },
-        { id: 'member-hk-2', name: '서금옥', role: '인스펙터', status: 'working', shift: 'Day' },
-        // 룸메이드 7명
-        { id: 'member-hk-3', name: '김순영', role: '룸메이드', status: 'working', shift: 'Day' },
-        { id: 'member-hk-4', name: '한옥순', role: '룸메이드', status: 'break', shift: 'Day' },
-        { id: 'member-hk-5', name: '오미영', role: '룸메이드', status: 'working', shift: 'Day' },
-        { id: 'member-hk-6', name: '강수미', role: '룸메이드', status: 'working', shift: 'Day' },
-        { id: 'member-hk-7', name: '임보라', role: '룸메이드', status: 'working', shift: 'Day' },
-        { id: 'member-hk-8', name: '배옥희', role: '룸메이드', status: 'off', shift: 'Day' },
-        { id: 'member-hk-9', name: '허순덕', role: '룸메이드', status: 'working', shift: 'Day' },
-        // 코디사원 3명
-        { id: 'member-hk-10', name: '이정자', role: '코디사원', status: 'working', shift: 'Day' },
-        { id: 'member-hk-11', name: '정혜진', role: '코디사원', status: 'working', shift: 'Day' },
-        { id: 'member-hk-12', name: '윤정희', role: '코디사원', status: 'break', shift: 'Day' },
-    ],
-    '시설': [
-        // 엔지니어 5명
-        { id: 'member-fc-0', name: '김태섭', role: '엔지니어', status: 'working', shift: 'Day' },
-        { id: 'member-fc-1', name: '박진우', role: '엔지니어', status: 'working', shift: 'Day' },
-        { id: 'member-fc-2', name: '한승기', role: '엔지니어', status: 'working', shift: 'Day' },
-        { id: 'member-fc-3', name: '오창민', role: '엔지니어', status: 'break', shift: 'Day' },
-        { id: 'member-fc-4', name: '강현철', role: '엔지니어', status: 'working', shift: 'Day' },
-        // 환경관리 3명
-        { id: 'member-fc-5', name: '이상호', role: '환경관리', status: 'working', shift: 'Day' },
-        { id: 'member-fc-6', name: '최동혁', role: '환경관리', status: 'working', shift: 'Day' },
-        { id: 'member-fc-7', name: '정용수', role: '환경관리', status: 'off', shift: 'Day' },
-    ],
-    '고객지원/CS': [
-        // 컨택센터 상담원 5명
-        { id: 'member-cs-0', name: '김나연', role: '컨택센터 상담원', status: 'working', shift: 'Day' },
-        { id: 'member-cs-1', name: '오예진', role: '컨택센터 상담원', status: 'working', shift: 'Day' },
-        { id: 'member-cs-2', name: '윤수아', role: '컨택센터 상담원', status: 'working', shift: 'Day' },
-        { id: 'member-cs-3', name: '노은지', role: '컨택센터 상담원', status: 'break', shift: 'Day' },
-        { id: 'member-cs-4', name: '허윤아', role: '컨택센터 상담원', status: 'working', shift: 'Day' },
-        // 고객서비스팀 3명
-        { id: 'member-cs-5', name: '이수빈', role: '고객서비스팀', status: 'working', shift: 'Day' },
-        { id: 'member-cs-6', name: '한지유', role: '고객서비스팀', status: 'working', shift: 'Day' },
-        { id: 'member-cs-7', name: '임하늘', role: '고객서비스팀', status: 'off', shift: 'Day' },
-        // CS파트 3명
-        { id: 'member-cs-8', name: '박소희', role: 'CS파트', status: 'working', shift: 'Day' },
-        { id: 'member-cs-9', name: '정서영', role: 'CS파트', status: 'working', shift: 'Day' },
-        { id: 'member-cs-10', name: '강채원', role: 'CS파트', status: 'working', shift: 'Day' },
-    ],
-    '마케팅/영업': [
-        // 마케팅전략팀 3명
-        { id: 'member-ms-0', name: '김지훈', role: '마케팅전략팀', status: 'working', shift: 'Day' },
-        { id: 'member-ms-1', name: '한민서', role: '마케팅전략팀', status: 'working', shift: 'Day' },
-        { id: 'member-ms-2', name: '오준혁', role: '마케팅전략팀', status: 'break', shift: 'Day' },
-        // 영업기획 3명
-        { id: 'member-ms-3', name: '이하은', role: '영업기획', status: 'working', shift: 'Day' },
-        { id: 'member-ms-4', name: '정우빈', role: '영업기획', status: 'working', shift: 'Day' },
-        { id: 'member-ms-5', name: '윤시우', role: '영업기획', status: 'off', shift: 'Day' },
-    ],
-    '경영/HR': [
-        // 교육개발팀 3명
-        { id: 'member-mg-0', name: '김관호', role: '교육개발팀', status: 'working', shift: 'Day' },
-        { id: 'member-mg-1', name: '오민수', role: '교육개발팀', status: 'working', shift: 'Day' },
-        { id: 'member-mg-2', name: '윤미선', role: '교육개발팀', status: 'working', shift: 'Day' },
-        // 인사(HRD) 3명
-        { id: 'member-mg-3', name: '이수정', role: '인사(HRD)', status: 'working', shift: 'Day' },
-        { id: 'member-mg-4', name: '한경민', role: '인사(HRD)', status: 'break', shift: 'Day' },
-        { id: 'member-mg-5', name: '임세환', role: '인사(HRD)', status: 'working', shift: 'Day' },
-        // 업무지시 보드 관리자 3명
-        { id: 'member-mg-6', name: '박성훈', role: '업무지시 보드 관리자', status: 'working', shift: 'Day' },
-        { id: 'member-mg-7', name: '정보경', role: '업무지시 보드 관리자', status: 'working', shift: 'Day' },
-        { id: 'member-mg-8', name: '강호진', role: '업무지시 보드 관리자', status: 'off', shift: 'Day' },
-    ],
-};
 
 // ─── Demo Scenarios for Pre/Post stages ───
 const DEMO_SCENARIOS: RegisteredTpo[] = [
@@ -323,13 +236,13 @@ export const InstructionBoard = () => {
                 }
 
                 // Persist assignment to DB in real-time
-                assignMemberToTask(taskId, memberId);
+                assignMemberToTask(taskId, member.name);
             }
         }
     }, [activeTasks, assignMemberToTask, addToast]);
 
-    const handleUnassign = React.useCallback((taskId: number, memberId: string) => {
-        unassignMemberFromTask(taskId, memberId);
+    const handleUnassign = React.useCallback((taskId: number, memberName: string) => {
+        unassignMemberFromTask(taskId, memberName);
     }, [unassignMemberFromTask]);
 
     const handleViewDetail = React.useCallback((task: TaskCardData) => {

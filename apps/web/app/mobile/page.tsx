@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { MobileJobCard } from '../../components/mobile/MobileJobCard';
 import { MobileJobDetail } from '../../components/mobile/MobileJobDetail';
 import { MobileLayout } from '../../components/mobile/MobileLayout';
 import { usePDCA } from '../../context/PDCAContext';
 import { colors } from '../../styles/theme';
 import { JobInstruction } from '@csmac/types';
+import { TEAM_ROSTERS } from '../../constants/team-rosters';
 
 export default function MobilePage() {
     const { jobInstructions, updateJobStatus, completeJobWithEvidence, team } = usePDCA();
@@ -14,12 +15,10 @@ export default function MobilePage() {
     const [myTasks, setMyTasks] = useState<JobInstruction[]>([]);
     const [selectedTask, setSelectedTask] = useState<JobInstruction | null>(null);
 
-    // Mock User List for the selected team
-    const MOCK_TEAM_MEMBERS = [
-        '김철수', '이영희', '노현우', '배수진', '오세진', '권도현',
-        '박미숙', '최영미', '서금옥', '김순영', '한옥순',
-        '김태섭', '박진우', '이상호', '최동혁'
-    ];
+    // Dynamic User List from all teams
+    const ALL_TEAM_MEMBERS = useMemo(() => {
+        return Object.values(TEAM_ROSTERS).flat().map(m => m.name).sort((a, b) => a.localeCompare(b, 'ko'));
+    }, []);
 
     useEffect(() => {
         // Filter by current user name if selected
@@ -73,7 +72,7 @@ export default function MobilePage() {
                         }}
                     >
                         <option value="">사용자 선택 안함 (전체 보기)</option>
-                        {MOCK_TEAM_MEMBERS.map(name => (
+                        {ALL_TEAM_MEMBERS.map(name => (
                             <option key={name} value={name}>{name}</option>
                         ))}
                     </select>

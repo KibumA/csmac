@@ -167,15 +167,10 @@ export const DoProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     // Fetch job instructions for Job Card Board
     const fetchJobInstructions = React.useCallback(async () => {
         try {
-            let query = supabase
+            const { data, error } = await supabase
                 .from('job_instructions')
-                .select('*');
-
-            if (team !== '전체') {
-                query = query.eq('team', team);
-            }
-
-            const { data, error } = await query.order('created_at', { ascending: false });
+                .select('*')
+                .order('created_at', { ascending: false });
 
             if (error) {
                 console.error('Error fetching job instructions:', error);
@@ -273,7 +268,7 @@ export const DoProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         } catch (err) {
             console.error('Error inserting job_instruction:', err);
         }
-    }, [registeredTpos, team, fetchJobInstructions]);
+    }, [registeredTpos, team, fetchJobInstructions, deployedTaskGroupIds]);
 
     const removeFromBoard = React.useCallback(async (groupId: number) => {
         // DELETE from Supabase

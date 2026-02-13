@@ -27,7 +27,7 @@ export function useCheckPhase() {
             const mapped: JobInstruction[] = data.map((item: any) => ({
                 id: item.id,
                 targetTeam: item.team,
-                assignee: item.assignee || '담당자',
+                assignee: item.assignee ? item.assignee.split(' (')[0] : null,
                 subject: item.subject,
                 description: item.description || '',
                 deadline: item.deadline || '',

@@ -8,7 +8,7 @@ export const mapDbToJobInstruction = (item: any): JobInstruction => {
         id: item.id,
         targetTeam: item.team,
         team: item.team,
-        assignee: item.assignee || '담당자',
+        assignee: item.assignee ? item.assignee.split(' (')[0] : null,
         subject: item.subject,
         description: item.description || '',
         deadline: item.deadline || '',
@@ -45,7 +45,7 @@ export const mapDbToInspectionRecord = (item: any): InspectionRecord => {
     return {
         id: item.id,
         time: timeStr,
-        name: item.assignee || '담당자',
+        name: item.assignee ? item.assignee.split(' (')[0] : null,
         area: area,
         item: workItem,
         status: status,
