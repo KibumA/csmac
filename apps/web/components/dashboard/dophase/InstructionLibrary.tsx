@@ -251,14 +251,31 @@ export const InstructionLibrary: React.FC = () => {
                         return a.job.localeCompare(b.job, 'ko');
                     });
 
-                    const jobRows: { key: string; label: string; items: typeof filteredItems }[] = [
-                        { key: '전체', label: '전체', items: filteredItems },
-                        ...teamJobPairs.map(({ team, job }) => ({
+                    const isAllTeams = librarySelectedTeams.length === 0 || librarySelectedTeams.includes('전체');
+                    const isAllJobs = librarySelectedJobs.length === 0 || librarySelectedJobs.includes('전체');
+
+                    let jobRows: { key: string; label: string; items: typeof filteredItems }[] = [];
+
+                    if (isAllTeams && isAllJobs) {
+                        jobRows = [{ key: 'all', label: '전체', items: filteredItems }];
+                    } else if (!isAllTeams && isAllJobs) {
+                        const uniqueTeams = Array.from(new Set(filteredItems.map(i => i.team))).sort((a, b) => {
+                            if (a === '전체') return -1;
+                            if (b === '전체') return 1;
+                            return a.localeCompare(b, 'ko');
+                        });
+                        jobRows = uniqueTeams.map(team => ({
+                            key: team,
+                            label: team === '전체' ? '전팀' : team,
+                            items: filteredItems.filter(i => i.team === team)
+                        }));
+                    } else {
+                        jobRows = teamJobPairs.map(({ team, job }) => ({
                             key: `${team}|${job}`,
-                            label: `${team} · ${job}`,
+                            label: team === '전체' && job === '전체' ? '전팀 전직무' : `${team} · ${job}`,
                             items: filteredItems.filter(i => i.team === team && i.job === job)
-                        }))
-                    ];
+                        }));
+                    }
 
                     return jobRows.map(({ key, label, items: rowItems }) => (
                         <div key={key} style={{ marginBottom: '20px' }}>

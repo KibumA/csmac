@@ -448,17 +448,16 @@ export default function PlanPhaseContent() {
 
                 {/* --- REGISTERED LIST SECTION --- */}
                 <div style={{ marginTop: '40px' }}>
-                    <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                    <div style={{ marginBottom: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
                         <div>
                             <h2 style={{ fontSize: '1.1rem', fontWeight: 'bold', color: colors.textDark }}>TPO 등록 리스트</h2>
                             <p style={{ fontSize: '0.8rem', color: colors.textGray, marginTop: '4px' }}>{workplace} 사업장의 등록 현황입니다.</p>
                         </div>
 
                         {/* List Filters */}
-                        <div style={{ display: 'flex', gap: '15px', alignItems: 'flex-end' }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                <label style={{ fontSize: '0.75rem', fontWeight: 'bold', color: colors.textGray, marginLeft: '4px' }}>팀 필터</label>
-                                <div style={{ display: 'flex', gap: '6px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                                     <button
                                         onClick={() => {
                                             setListFilterTeam('전체');
@@ -503,11 +502,8 @@ export default function PlanPhaseContent() {
                                 </div>
                             </div>
 
-                            <div style={{ height: '24px', width: '1px', backgroundColor: '#E2E8F0', marginBottom: '6px' }}></div>
-
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                <label style={{ fontSize: '0.75rem', fontWeight: 'bold', color: colors.textGray, marginLeft: '4px' }}>직무 필터</label>
-                                <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', maxWidth: '400px', paddingBottom: '2px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                                     <button
                                         onClick={() => setListFilterJob('전체')}
                                         style={{
@@ -522,7 +518,7 @@ export default function PlanPhaseContent() {
                                             whiteSpace: 'nowrap'
                                         }}
                                     >
-                                        전체 직무
+                                        전체
                                     </button>
                                     {(listFilterTeam === '전체' ? allUniqueJobs : teams[listFilterTeam]?.jobs || []).map(j => (
                                         <button
