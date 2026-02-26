@@ -274,7 +274,7 @@ export const InstructionLibrary: React.FC = () => {
                                     backgroundColor: '#F1F5F9', color: '#64748B',
                                     padding: '1px 6px', borderRadius: '9999px'
                                 }}>
-                                    {rowItems.length}개
+                                    {label === '전체' ? filteredItems.length : filteredItems.filter(i => i.team === label.split(' · ')[0]).length}개
                                 </span>
                             </div>
                             {/* 3열 카드 그리드 */}
