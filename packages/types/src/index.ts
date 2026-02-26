@@ -203,7 +203,7 @@ export interface TeamMember {
     avatarUrl?: string;
 }
 
-export type TaskStage = 'pre' | 'during' | 'post'; // 업무 전(Preparation), 중(Operation), 후(Closing)
+export type TaskStage = 'pre' | 'during' | 'post' | 'after_service'; // 업무 전, 중, 후, 영업 후
 
 export interface TaskCardData extends RegisteredTpo {
     stage: TaskStage;

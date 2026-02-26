@@ -1,94 +1,91 @@
 import React from 'react';
 import { TaskCardData, TeamMember, TaskStage } from '@csmac/types';
 import { TaskCard } from './TaskCard';
-import { STAGE_LABELS } from '../../../../utils/tpoUtils';
 import { colors } from '../../../../styles/theme';
 
 interface TaskTemplateBoardProps {
     tasks: TaskCardData[];
-    assignments: Record<number, string[]>; // taskId -> memberId[]
+    assignments: Record<number, string[]>;
     members: TeamMember[];
     onUnassign: (taskId: number, memberId: string) => void;
     onViewDetail: (task: TaskCardData) => void;
 }
 
+const STAGE_ORDER: TaskStage[] = ['pre', 'during', 'post', 'after_service'];
+
 export const TaskTemplateBoard: React.FC<TaskTemplateBoardProps> = ({ tasks, assignments, members, onUnassign, onViewDetail }) => {
-    const stages: TaskStage[] = ['pre', 'during', 'post'];
+    const teamOrder = Array.from(new Set(tasks.map(t => t.team))).sort((a, b) => a.localeCompare(b, 'ko'));
+
+    const sortedTasks = [...tasks].sort((a, b) => {
+        const teamCmp = teamOrder.indexOf(a.team) - teamOrder.indexOf(b.team);
+        if (teamCmp !== 0) return teamCmp;
+        const jobCmp = a.job.localeCompare(b.job, 'ko');
+        if (jobCmp !== 0) return jobCmp;
+        return STAGE_ORDER.indexOf(a.stage) - STAGE_ORDER.indexOf(b.stage);
+    });
+
+    // 팀별로 그룹핑
+    const grouped: { team: string; tasks: TaskCardData[] }[] = [];
+    for (const task of sortedTasks) {
+        const last = grouped[grouped.length - 1];
+        if (last && last.team === task.team) {
+            last.tasks.push(task);
+        } else {
+            grouped.push({ team: task.team, tasks: [task] });
+        }
+    }
+
+    if (sortedTasks.length === 0) {
+        return (
+            <div style={{ flex: 1, padding: '16px 24px', backgroundColor: 'white', overflowY: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ textAlign: 'center', color: '#9CA3AF', fontSize: '0.85rem' }}>
+                    <div style={{ fontSize: '3rem', marginBottom: '16px' }}>📋</div>
+                    배정할 업무가 없습니다.
+                </div>
+            </div>
+        );
+    }
 
     return (
-        <div style={{ flex: 1, padding: '24px', backgroundColor: 'white', overflowX: 'auto' }}>
-            <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(3, 1fr)',
-                gap: '24px',
-                height: '100%',
-                minWidth: '800px'
-            }}>
-                {stages.map(stage => {
-                    const stageTasks = tasks.filter(t => t.stage === stage);
+        <div style={{ flex: 1, padding: '16px 24px', backgroundColor: 'white', overflowY: 'auto' }}>
+            {grouped.map(({ team, tasks: teamTasks }) => (
+                <div key={team} style={{ marginBottom: '24px' }}>
+                    {/* 팀 헤더 */}
+                    <div style={{
+                        fontSize: '0.75rem',
+                        fontWeight: 'bold',
+                        color: colors.textGray,
+                        letterSpacing: '0.05em',
+                        borderBottom: `2px solid ${colors.border}`,
+                        paddingBottom: '6px',
+                        marginBottom: '12px'
+                    }}>
+                        {team}
+                    </div>
 
-                    return (
-                        <div key={stage} style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-                            <div style={{
-                                display: 'flex', alignItems: 'center', gap: '8px',
-                                marginBottom: '16px', paddingBottom: '8px',
-                                borderBottom: '2px solid #F1F5F9' // slate-100
-                            }}>
-                                <h3 style={{ fontWeight: 'bold', color: '#334155' }}>{STAGE_LABELS[stage]}</h3>
-                                <span style={{
-                                    backgroundColor: '#F1F5F9', // slate-100
-                                    color: '#64748B', // slate-500
-                                    fontSize: '0.75rem',
-                                    fontWeight: 'bold',
-                                    padding: '2px 8px',
-                                    borderRadius: '9999px'
-                                }}>
-                                    {stageTasks.length}
-                                </span>
-                            </div>
-
-                            <div style={{
-                                flex: 1,
-                                backgroundColor: '#F8F9FA', // slate-50/50 
-                                borderRadius: '12px',
-                                padding: '12px',
-                                border: `1px solid ${colors.border}`,
-                                overflowY: 'auto',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                gap: '12px'
-                            }}>
-                                {stageTasks.map(task => {
-                                    const assignedMemberIds = assignments[task.id] || [];
-                                    const assignedMembers = assignedMemberIds.map(id => members.find(m => m.id === id)).filter(Boolean) as TeamMember[];
-
-                                    return (
-                                        <TaskCard
-                                            key={task.id}
-                                            task={task}
-                                            assignedMembers={assignedMembers}
-                                            onUnassign={onUnassign}
-                                            onViewDetail={onViewDetail}
-                                        />
-                                    );
-                                })}
-
-                                {stageTasks.length === 0 && (
-                                    <div style={{
-                                        textAlign: 'center',
-                                        padding: '80px 0',
-                                        color: '#9CA3AF',
-                                        fontSize: '0.75rem',
-                                        fontStyle: 'italic'
-                                    }}>
-                                        해당 단계의 업무가 없습니다.
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    );
-                })}
-            </div>
+                    {/* 3열 그리드 */}
+                    <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(3, 1fr)',
+                        gap: '10px'
+                    }}>
+                        {teamTasks.map(task => {
+                            const assignedMembers = (assignments[task.id] || [])
+                                .map(id => members.find(m => m.id === id))
+                                .filter(Boolean) as TeamMember[];
+                            return (
+                                <TaskCard
+                                    key={task.id}
+                                    task={task}
+                                    assignedMembers={assignedMembers}
+                                    onUnassign={onUnassign}
+                                    onViewDetail={onViewDetail}
+                                />
+                            );
+                        })}
+                    </div>
+                </div>
+            ))}
         </div>
     );
 };

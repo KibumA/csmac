@@ -3,9 +3,8 @@ import { colors } from '../../../styles/theme';
 import { usePDCA } from '../../../context/PDCAContext';
 import { useToast } from '../../../context/ToastContext';
 import { RegisteredTpo, ChecklistItem } from '@csmac/types';
-import { CategoryColumn, TEAM_COLORS } from './CategoryColumn';
+import { LibraryCard } from './LibraryCard';
 import { LibraryDetailModal } from './LibraryDetailModal';
-import { TEAMS } from '../../../constants/pdca-data';
 
 interface FlattenedLibraryItem extends RegisteredTpo {
     currentGroupId: number;
@@ -54,6 +53,18 @@ export const InstructionLibrary: React.FC = () => {
         if (!teamJobMap[t.team].includes(t.job)) teamJobMap[t.team].push(t.job);
     });
 
+    // Custom sort: '전체' first, then alphabetical (가나다순)
+    const sortFn = (a: string, b: string) => {
+        if (a === '전체') return -1;
+        if (b === '전체') return 1;
+        return a.localeCompare(b, 'ko');
+    };
+
+    const sortedFilterTeams = Object.keys(teamJobMap).sort(sortFn);
+    Object.keys(teamJobMap).forEach(team => {
+        teamJobMap[team].sort(sortFn);
+    });
+
     // Flatten items: Each setupTask (combination) becomes its own card
     const flattenedItems = registeredTpos.flatMap(tpo => {
         if (!tpo.setupTasks || tpo.setupTasks.length === 0) {
@@ -81,7 +92,7 @@ export const InstructionLibrary: React.FC = () => {
         return matchesSearch && matchesOccasion && matchesTeam && matchesJob && matchesMode;
     });
 
-    const teamKeys = Array.from(new Set(filteredItems.map(t => t.team))).sort();
+
 
     const resetFilters = () => {
         setLibrarySearchQuery('');
@@ -174,7 +185,7 @@ export const InstructionLibrary: React.FC = () => {
                 <div style={{ flex: 1, borderTop: `1px solid ${colors.border}`, paddingTop: '20px' }}>
                     <div style={{ fontSize: '0.9rem', color: colors.textGray, marginBottom: '15px' }}>팀 · 직무</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                        {Object.keys(teamJobMap).map(team => (
+                        {sortedFilterTeams.map(team => (
                             <div key={team}>
                                 <div
                                     onClick={() => setLibrarySelectedTeams(prev => prev.includes(team) ? prev.filter(t => t !== team) : [...prev, team])}
@@ -213,52 +224,77 @@ export const InstructionLibrary: React.FC = () => {
                 </div>
             </div>
 
-            {/* Main Content: Card Grid */}
-            <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '30px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-                    <div style={{ fontSize: '0.85rem', fontWeight: 'bold', color: colors.textDark, flex: '1 1 200px', minWidth: 0 }}>
-                        팀/직무 · 상황(TPO) · 표준/베테랑 지시를 선택해 “우리팀 보드”로 즉시 배포
-                    </div>
-                    <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
-                        <button
-                            onClick={resetFilters}
-                            style={{ padding: '7px 10px', borderRadius: '10px', border: `1px solid ${colors.border}`, backgroundColor: 'white', fontSize: '12px', cursor: 'pointer', whiteSpace: 'nowrap' }}
-                        >
-                            필터 초기화
-                        </button>
-                        <button style={{ padding: '7px 10px', borderRadius: '10px', border: 'none', backgroundColor: colors.primaryBlue, color: 'white', fontSize: '12px', fontWeight: 800, cursor: 'pointer', whiteSpace: 'nowrap' }}>우리팀 보드 보기</button>
-                    </div>
+            {/* Main Content: Row per Job */}
+            <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '8px' }}>
+                    <button
+                        onClick={resetFilters}
+                        style={{ padding: '7px 10px', borderRadius: '10px', border: `1px solid ${colors.border}`, backgroundColor: 'white', fontSize: '12px', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                    >
+                        필터 초기화
+                    </button>
                 </div>
 
-                <div style={{ display: 'flex', gap: '12px', overflowX: 'auto', paddingBottom: '8px', height: '100%' }}>
-                    {teamKeys.length > 0 ? teamKeys.map(teamKey => {
-                        const teamInfo = TEAMS[teamKey];
-                        const teamLabel = teamInfo?.label || teamKey;
-                        const jobs = teamInfo?.jobs || [];
-                        const teamColor = TEAM_COLORS[teamKey] || colors.primaryBlue;
-                        return (
-                            <CategoryColumn
-                                key={teamKey}
-                                title={teamLabel}
-                                subtitle={jobs.join('·')}
-                                teamColor={teamColor}
-                                items={filteredItems.filter(t => t.team === teamKey)}
-                                onViewDetail={(item) => {
-                                    setSelectedDetailItem(item);
-                                    setDetailModalOpen(true);
-                                }}
-                                onToggleBoard={handleToggleBoard}
-                                isDeployed={isDeployed}
-                            />
-                        );
-                    }) : (
-                        <div style={{ flex: 1, padding: '100px', textAlign: 'center', color: colors.textGray }}>
-                            <div style={{ fontSize: '4rem', marginBottom: '20px' }}>📋</div>
-                            <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: colors.textDark }}>검색된 결과가 없습니다.</div>
-                            <div style={{ fontSize: '0.9rem', marginTop: '10px' }}>필터를 조정하여 원하는 업무를 찾아보세요.</div>
+                {filteredItems.length === 0 ? (
+                    <div style={{ flex: 1, padding: '100px', textAlign: 'center', color: colors.textGray }}>
+                        <div style={{ fontSize: '4rem', marginBottom: '20px' }}>📋</div>
+                        <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: colors.textDark }}>검색된 결과가 없습니다.</div>
+                        <div style={{ fontSize: '0.9rem', marginTop: '10px' }}>필터를 조정하여 원하는 업무를 찾아보세요.</div>
+                    </div>
+                ) : (() => {
+                    // 팀→직무 가나다순 정렬
+                    const teamJobPairs = Array.from(
+                        new Map(filteredItems.map(i => [`${i.team}|${i.job}`, { team: i.team, job: i.job }])).values()
+                    ).sort((a, b) => {
+                        const teamCmp = a.team.localeCompare(b.team, 'ko');
+                        if (teamCmp !== 0) return teamCmp;
+                        return a.job.localeCompare(b.job, 'ko');
+                    });
+
+                    const jobRows: { key: string; label: string; items: typeof filteredItems }[] = [
+                        { key: '전체', label: '전체', items: filteredItems },
+                        ...teamJobPairs.map(({ team, job }) => ({
+                            key: `${team}|${job}`,
+                            label: `${team} · ${job}`,
+                            items: filteredItems.filter(i => i.team === team && i.job === job)
+                        }))
+                    ];
+
+                    return jobRows.map(({ key, label, items: rowItems }) => (
+                        <div key={key} style={{ marginBottom: '20px' }}>
+                            {/* 행 헤더 */}
+                            <div style={{
+                                fontSize: '0.8rem', fontWeight: 'bold', color: colors.textGray,
+                                borderBottom: `2px solid ${colors.border}`, paddingBottom: '6px', marginBottom: '10px',
+                                display: 'flex', alignItems: 'center', gap: '8px'
+                            }}>
+                                <span>{label}</span>
+                                <span style={{
+                                    fontSize: '0.7rem', fontWeight: 'normal',
+                                    backgroundColor: '#F1F5F9', color: '#64748B',
+                                    padding: '1px 6px', borderRadius: '9999px'
+                                }}>
+                                    {label === '전체' ? filteredItems.length : filteredItems.filter(i => i.job === label).length}개
+                                </span>
+                            </div>
+                            {/* 3열 카드 그리드 */}
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+                                {rowItems.map((item, idx) => (
+                                    <LibraryCard
+                                        key={`${label}-${idx}`}
+                                        data={item}
+                                        onViewDetail={() => {
+                                            setSelectedDetailItem(item);
+                                            setDetailModalOpen(true);
+                                        }}
+                                        onToggleBoard={handleToggleBoard}
+                                        isDeployed={isDeployed}
+                                    />
+                                ))}
+                            </div>
                         </div>
-                    )}
-                </div>
+                    ));
+                })()}
             </div>
 
             {isDetailModalOpen && selectedDetailItem && (

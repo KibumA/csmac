@@ -8,7 +8,7 @@ export const mapDbToJobInstruction = (item: JobInstructionDB): JobInstruction =>
         id: item.id,
         targetTeam: item.team,
         team: item.team,
-        assignee: item.assignee ? item.assignee.split(' (')[0] : null,
+        assignee: item.assignee ? item.assignee.split(' (')[0] : '',
         subject: item.subject,
         description: item.description || '',
         deadline: item.deadline || '',

@@ -36,18 +36,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, assignedMembers, onUna
                 onClick={() => onViewDetail(task)}
                 style={{ padding: '16px', borderBottom: `1px solid ${colors.border}`, cursor: 'pointer' }}
             >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                    <span style={{
-                        backgroundColor: '#EFF6FF', // blue-50
-                        color: colors.primaryBlue,
-                        fontSize: '10px',
-                        fontWeight: 'bold',
-                        padding: '2px 8px',
-                        borderRadius: '4px',
-                        border: '1px solid #DBEAFE' // blue-100
-                    }}>
-                        {task.tpo.time}
-                    </span>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'flex-start', marginBottom: '8px' }}>
                     {assignedMembers.length === 0 && (
                         <span style={{
                             display: 'flex', alignItems: 'center', gap: '4px',

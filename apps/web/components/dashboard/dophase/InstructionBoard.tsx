@@ -21,47 +21,6 @@ import { TaskTemplateBoard } from './InstructionBoard/TaskTemplateBoard';
 import { LibraryDetailModal } from './LibraryDetailModal';
 import { User, Send } from 'lucide-react';
 
-// ─── Demo Scenarios for Pre/Post stages ───
-const DEMO_SCENARIOS: RegisteredTpo[] = [
-    // Pre-work (업무 전) - 3 scenarios
-    {
-        id: -1, workplace: '소노벨 천안', team: '프론트', job: '지배인',
-        tpo: { time: '오픈 준비', place: '객실', occasion: '브리핑' },
-        criteria: { checklist: '조회 브리핑 및 인수인계 확인', items: [] },
-        matching: { evidence: '', method: '', elements: [] }
-    },
-    {
-        id: -2, workplace: '소노벨 천안', team: '프론트', job: '리셉션',
-        tpo: { time: '개시 전 점검', place: '로비', occasion: '입실 준비' },
-        criteria: { checklist: '로비 청결 상태 및 비품 점검', items: [] },
-        matching: { evidence: '', method: '', elements: [] }
-    },
-    {
-        id: -3, workplace: '소노벨 천안', team: '프론트', job: '컨시어즈',
-        tpo: { time: '오픈 전', place: '프론트 데스크', occasion: '준비' },
-        criteria: { checklist: '체크인 시스템 가동 및 키카드 준비', items: [] },
-        matching: { evidence: '', method: '', elements: [] }
-    },
-    // Post-work (업무 후) - 3 scenarios
-    {
-        id: -4, workplace: '소노벨 천안', team: '프론트', job: '지배인',
-        tpo: { time: '마감', place: '객실', occasion: '정산' },
-        criteria: { checklist: '일일 매출 정산 및 마감 보고 작성', items: [] },
-        matching: { evidence: '', method: '', elements: [] }
-    },
-    {
-        id: -5, workplace: '소노벨 천안', team: '프론트', job: '리셉션',
-        tpo: { time: '종료', place: '로비', occasion: '퇴실 확인' },
-        criteria: { checklist: '미퇴실 고객 확인 및 야간 인수인계', items: [] },
-        matching: { evidence: '', method: '', elements: [] }
-    },
-    {
-        id: -6, workplace: '소노벨 천안', team: '프론트', job: '컨시어즈',
-        tpo: { time: 'close', place: '프론트 데스크', occasion: '보고' },
-        criteria: { checklist: '고객 VOC 일지 정리 및 야간 당직 전달', items: [] },
-        matching: { evidence: '', method: '', elements: [] }
-    },
-];
 
 export const InstructionBoard = () => {
     const {
@@ -153,7 +112,6 @@ export const InstructionBoard = () => {
     }, [instructionBoardTeams]);
 
     // Transform RegisteredTpos to TaskCardData structure with Stages
-    // Merge DB data + demo scenarios for pre/post columns
     const activeTasks: TaskCardData[] = useMemo(() => {
         if (!registeredTpos) return [];
 
@@ -165,15 +123,8 @@ export const InstructionBoard = () => {
             isTeamMatch(t.team) &&
             isJobMatch(t.job);
 
-        // 1. Demo Scenarios (Pre/Post stages)
-        const demoTasks = DEMO_SCENARIOS.filter(filterTask).map(t => ({
-            ...t,
-            stage: getStageFromTpo(t.tpo.time, t.tpo.occasion),
-            assignedMemberIds: []
-        }));
-
-        // 2. Real Deployed Tasks (Operation stage)
-        const realTasks = registeredTpos.filter(filterTask).flatMap(tpo => {
+        // Real Deployed Tasks from DB only
+        return registeredTpos.filter(filterTask).flatMap(tpo => {
             if (!tpo.setupTasks || tpo.setupTasks.length === 0) return [];
 
             return tpo.setupTasks
@@ -188,9 +139,8 @@ export const InstructionBoard = () => {
                         .map(job => job.assignee!)
                 }));
         });
-
-        return [...demoTasks, ...realTasks];
     }, [instructionBoardWorkplace, instructionBoardTeams, instructionBoardJobs, jobInstructions, registeredTpos, deployedTaskGroupIds]);
+
 
     // 3. DnD Sensors
     const sensors = useSensors(
@@ -363,14 +313,10 @@ export const InstructionBoard = () => {
                     </div>
 
                     {/* Row 3: Job Chips */}
-                    <div style={{
-                        display: 'flex', alignItems: 'center', gap: '12px',
-                        backgroundColor: '#F8FAFC', padding: '0 12px', borderRadius: '8px',
-                        border: '1px solid #F1F5F9', height: '48px', minHeight: '48px'
-                    }}>
+                    <div style={{ display: 'flex', alignItems: 'center' }}>
                         <div style={{
                             display: 'flex', gap: '6px', alignItems: 'center',
-                            overflowX: 'auto', flex: 1, height: '100%'
+                            overflowX: 'auto', flex: 1
                         }}>
                             <button
                                 onClick={() => handleJobClick('전체')}
