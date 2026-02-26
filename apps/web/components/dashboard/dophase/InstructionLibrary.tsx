@@ -269,15 +269,6 @@ export const InstructionLibrary: React.FC = () => {
                                 display: 'flex', alignItems: 'center', gap: '8px'
                             }}>
                                 <span>{label}</span>
-                                <span style={{
-                                    fontSize: '0.7rem', fontWeight: 'normal',
-                                    backgroundColor: '#F1F5F9', color: '#64748B',
-                                    padding: '1px 6px', borderRadius: '9999px'
-                                }}>
-                                    {label === '전체'
-                                        ? new Set(filteredItems.map(i => i.id)).size
-                                        : new Set(filteredItems.filter(i => i.team === label.split(' · ')[0]).map(i => i.id)).size}개
-                                </span>
                             </div>
                             {/* 3열 카드 그리드 */}
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
