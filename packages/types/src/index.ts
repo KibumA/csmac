@@ -177,7 +177,7 @@ export interface VocRecord {
 export interface JobInstruction {
     id: number;
     targetTeam: string;
-    assignee: string;
+    assignee: string | null;
     subject: string;
     description: string;
     deadline: string;
@@ -211,4 +211,5 @@ export interface TaskCardData extends RegisteredTpo {
     stage: TaskStage;
     assignedMemberIds: string[]; // Temporarily assigned members before deployment
     isVeteran?: boolean; // New flag for gap fulfillment
+    displayItems?: ChecklistItem[];
 }
