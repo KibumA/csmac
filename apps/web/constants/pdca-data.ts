@@ -1,5 +1,8 @@
 import { TeamsMapping, CriteriaData } from '@csmac/types';
 
+export const WORKPLACES = ['소노벨 천안', '소노벨 경주'] as const;
+export const DEFAULT_WORKPLACE = WORKPLACES[0];
+
 export const TEAMS: TeamsMapping = {
     '프론트': { label: '프론트', jobs: ['지배인', '리셉션', '컨시어즈'] },
     '객실관리': { label: '객실관리', jobs: ['인스펙터', '룸메이드', '코디사원'] },
@@ -11,7 +14,7 @@ export const TEAMS: TeamsMapping = {
 
 export const TPO_OPTIONS = {
     time: ['업무전', '업무중', '업무후', '영업후'],
-    place: ['객실', '로비', '레스토랑/라운지', '주차장', '복도/E/V', '창고/린넨실', '기계실/업무지시 보드'],
+    place: ['객실', '로비', '레스토랑/라운지', '주차장', '복도/E/V', '창고/린넨실', '기계실/상황실'],
     occasion: [
         '인스펙션 실행',
         '객실 정비/세팅',
@@ -30,7 +33,7 @@ export const PLACE_OCCASION_MAPPING: Record<string, string[]> = {
     '주차장': ['시설/안전 점검', '컴플레인/VOC 처리'],
     '복도/E/V': ['시설/안전 점검', '컴플레인/VOC 처리'],
     '창고/린넨실': ['물품 전달/불출', '시설/안전 점검'],
-    '기계실/업무지시 보드': ['시설/안전 점검', '컴플레인/VOC 처리', '영업 준비/마감']
+    '기계실/상황실': ['시설/안전 점검', '컴플레인/VOC 처리', '영업 준비/마감']
 };
 
 export const CRITERIA_OPTIONS: Record<string, CriteriaData> = {
@@ -176,7 +179,7 @@ export const CRITERIA_OPTIONS: Record<string, CriteriaData> = {
             { content: '조명 밝기 및 통로 확보 상태' }
         ]
     },
-    '기계실/업무지시 보드|시설/안전 점검': {
+    '기계실/상황실|시설/안전 점검': {
         checklist: '핵심 설비 및 시스템이 정상 작동 중인가?',
         items: [
             { content: '냉난방기 압력 및 온도 체크' },
@@ -186,7 +189,7 @@ export const CRITERIA_OPTIONS: Record<string, CriteriaData> = {
             { content: '시스템 오류 로그 확인 및 보고' }
         ]
     },
-    '기계실/업무지시 보드|영업 준비/마감': {
+    '기계실/상황실|영업 준비/마감': {
         checklist: '설비 시스템 교대 및 마감 점검이 완료되었는가?',
         items: [
             { content: '인수인계 일지 기록 상태' },
@@ -195,7 +198,7 @@ export const CRITERIA_OPTIONS: Record<string, CriteriaData> = {
             { content: '제어실 출입 통제 장치 작동 여부' }
         ]
     },
-    '기계실/업무지시 보드|컴플레인/VOC 처리': {
+    '기계실/상황실|컴플레인/VOC 처리': {
         checklist: '기술적 불편 사항이 신속히 대응되었는가?',
         items: [
             { content: '객실 온도 조절 원격 대응 속도' },

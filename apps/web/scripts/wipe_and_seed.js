@@ -158,7 +158,7 @@ const TPO_SCENARIOS = [
 
     // ── 시설 ──
     {
-        team: '시설', job: '엔지니어', time: '업무전', place: '기계실/업무지시 보드', occasion: '시설/안전 점검',
+        team: '시설', job: '엔지니어', time: '업무전', place: '기계실/상황실', occasion: '시설/안전 점검',
         evidence: '사진', method: '정기점검', elements: ['설비', '안전'],
         checklist: '시설 설비 일일 시작 점검',
         items: ['냉난방기 압력 및 온도 체크', '화재 수신기 정상 작동 확인', 'CCTV 모니터링 사각지대 여부', '전기 판넬 과열 흔적 확인']
@@ -176,7 +176,7 @@ const TPO_SCENARIOS = [
         items: ['포트홀 및 바닥 균열 유무', '조명 조도 및 작동 상태', '소화기 비치 및 점검 기록', '진입로 표지판 식별 가능 여부']
     },
     {
-        team: '시설', job: '엔지니어', time: '업무후', place: '기계실/업무지시 보드', occasion: '영업 준비/마감',
+        team: '시설', job: '엔지니어', time: '업무후', place: '기계실/상황실', occasion: '영업 준비/마감',
         evidence: '사진', method: '정기점검', elements: ['인수인계', '백업'],
         checklist: '설비 시스템 야간 교대 점검',
         items: ['인수인계 일지 기록 상태', '비상 발전기 대기 모드 확인', '네트워크 서버 백업 체크', '제어실 출입 통제 장치 작동']
@@ -184,7 +184,7 @@ const TPO_SCENARIOS = [
 
     // ── 고객지원/CS ──
     {
-        team: '고객지원/CS', job: '컨택센터 상담원', time: '업무중', place: '기계실/업무지시 보드', occasion: '컴플레인/VOC 처리',
+        team: '고객지원/CS', job: '컨택센터 상담원', time: '업무중', place: '기계실/상황실', occasion: '컴플레인/VOC 처리',
         evidence: '사진', method: '정기점검', elements: ['응대', '기록'],
         checklist: '컨택센터 고객 응대 품질 점검',
         items: ['응대 스크립트 준수 여부', '고객 대기시간 모니터링', '통화 후 VOC 기록 작성', '에스컬레이션 절차 이행']
@@ -198,7 +198,7 @@ const TPO_SCENARIOS = [
 
     // ── 마케팅/영업 ──
     {
-        team: '마케팅/영업', job: '마케팅전략팀', time: '업무중', place: '기계실/업무지시 보드', occasion: '영업 준비/마감',
+        team: '마케팅/영업', job: '마케팅전략팀', time: '업무중', place: '기계실/상황실', occasion: '영업 준비/마감',
         evidence: '사진', method: '정기점검', elements: ['데이터', '분석'],
         checklist: '일간 마케팅 성과 모니터링',
         items: ['예약률 및 객실 가동률 확인', '프로모션 적용 현황 점검', '웹사이트 트래픽 분석', 'OTA 채널 리뷰 관리']
@@ -206,13 +206,13 @@ const TPO_SCENARIOS = [
 
     // ── 경영/HR ──
     {
-        team: '경영/HR', job: '교육개발팀', time: '업무중', place: '기계실/업무지시 보드', occasion: '시설/안전 점검',
+        team: '경영/HR', job: '교육개발팀', time: '업무중', place: '기계실/상황실', occasion: '시설/안전 점검',
         evidence: '사진', method: '정기점검', elements: ['교육', '관리'],
         checklist: '교육 프로그램 운영 현황 점검',
         items: ['월간 교육 이수율 확인', '신규 입사자 OJT 진행 상태', '서비스 매뉴얼 업데이트 여부', 'CS 평가 결과 분석']
     },
     {
-        team: '경영/HR', job: '업무지시 보드 관리자', time: '업무중', place: '기계실/업무지시 보드', occasion: '시설/안전 점검',
+        team: '경영/HR', job: '업무지시 보드 관리자', time: '업무중', place: '기계실/상황실', occasion: '시설/안전 점검',
         evidence: '사진', method: '정기점검', elements: ['모니터링', '상황'],
         checklist: '업무지시 보드 통합 모니터링 점검',
         items: ['CCTV 전체 채널 정상 수신', '화재/보안 경보 시스템 정상', '내부 통신 시스템 작동 확인', '비상 연락망 최신 여부']

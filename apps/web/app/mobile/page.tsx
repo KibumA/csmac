@@ -21,10 +21,10 @@ export default function MobilePage() {
     }, []);
 
     useEffect(() => {
-        // Filter by current user name if selected
+        // Filter by current user name if selected. Otherwise, only show tasks that HAVE an assignee.
         const filtered = currentUser
             ? jobInstructions.filter(t => t.assignee === currentUser)
-            : jobInstructions;
+            : jobInstructions.filter(t => t.assignee !== null);
 
         setMyTasks(filtered);
 
@@ -46,8 +46,6 @@ export default function MobilePage() {
 
     const handleComplete = async (file: File | null) => {
         if (!selectedTask) return;
-        if (!confirm('업무를 완료하시겠습니까?' + (file ? ' (사진이 함께 전송됩니다)' : ''))) return;
-
         await completeJobWithEvidence(selectedTask.id, file);
         setSelectedTask(null);
     };
@@ -103,6 +101,15 @@ export default function MobilePage() {
                     onClose={() => setSelectedTask(null)}
                     onStart={handleStart}
                     onComplete={handleComplete}
+                    onRevert={async () => {
+                        await updateJobStatus(selectedTask.id, 'in_progress');
+                        // Set back to waiting by updating DB directly
+                        const { supabase } = await import('../../utils/supabaseClient');
+                        await supabase.from('job_instructions')
+                            .update({ status: 'waiting', started_at: null, completed_at: null, evidence_url: null })
+                            .eq('id', selectedTask.id);
+                        setSelectedTask(null);
+                    }}
                 />
             )}
         </MobileLayout>

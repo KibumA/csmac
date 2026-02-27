@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
     CheckCircle2, AlertCircle, Scan, Image as LucideImage,
     ArrowRight, MessageSquare, ShieldCheck, Download,
@@ -14,8 +14,10 @@ export default function CheckPhaseContent() {
     const {
         verificationList, selectedId, setSelectedId, isAnalyzing,
         feedback, setFeedback, mounted, handleBatchAnalysis,
-        submitVerification, selectedItem, standardImage
+        submitVerification, selectedItem, standardImage, fetchVerificationList
     } = useCheckPhase();
+
+    const [zoomedImage, setZoomedImage] = useState<string | null>(null);
 
     const handleExport = () => {
         exportToCsv('verification_report', verificationList.map(v => ({
@@ -58,6 +60,20 @@ export default function CheckPhaseContent() {
                         AI 일괄 판독 실행
                     </button>
                     <button
+                        onClick={fetchVerificationList}
+                        style={{
+                            display: 'flex', alignItems: 'center', gap: '8px',
+                            backgroundColor: 'white', border: `1px solid ${colors.border}`,
+                            padding: '10px 16px', borderRadius: '10px', fontSize: '14px',
+                            fontWeight: 'bold', color: '#64748B', cursor: 'pointer',
+                            transition: '0.2s',
+                        }}
+                        onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#F1F5F9'}
+                        onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'white'}
+                    >
+                        <RefreshCw size={16} /> 새로고침
+                    </button>
+                    <button
                         onClick={handleExport}
                         style={{
                             display: 'flex', alignItems: 'center', gap: '8px',
@@ -72,7 +88,7 @@ export default function CheckPhaseContent() {
             </header>
 
             {/* Main Content Grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: selectedId ? '1.2fr 1fr' : '1fr', gap: '24px', transition: 'all 0.3s ease-in-out' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '24px' }}>
 
                 {/* Left: Verification List */}
                 <section style={{
@@ -115,17 +131,19 @@ export default function CheckPhaseContent() {
                                             <div style={{ fontSize: '12px', color: '#64748B', marginTop: '4px' }}>{item.assignee} · {new Date(item.timestamp).toLocaleTimeString()}</div>
                                         </td>
                                         <td style={{ padding: '16px 20px', textAlign: 'center' }}>
-                                            {item.evidenceUrl ? (
-                                                <img src={item.evidenceUrl} style={{ width: '60px', height: '45px', objectFit: 'cover', borderRadius: '6px', border: '1px solid #E2E8F0' }} alt="proof" />
-                                            ) : (
-                                                <div style={{ width: '60px', height: '45px', backgroundColor: '#F1F5F9', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                    <LucideImage size={16} color="#94A3B8" />
-                                                </div>
-                                            )}
+                                            <div style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+                                                {item.evidenceUrl ? (
+                                                    <img src={item.evidenceUrl} style={{ width: '60px', height: '45px', objectFit: 'cover', borderRadius: '6px', border: '1px solid #E2E8F0' }} alt="proof" />
+                                                ) : (
+                                                    <div style={{ width: '60px', height: '45px', backgroundColor: '#F1F5F9', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                        <LucideImage size={16} color="#94A3B8" />
+                                                    </div>
+                                                )}
+                                            </div>
                                         </td>
                                         <td style={{ padding: '16px 20px', textAlign: 'center' }}>
                                             {item.aiScore ? (
-                                                <div style={{ display: 'inline-block' }}>
+                                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                                                     <div style={{ fontSize: '14px', fontWeight: 900, color: item.aiScore > 80 ? colors.success : '#F59E0B' }}>
                                                         {item.aiScore}%
                                                     </div>
@@ -159,7 +177,7 @@ export default function CheckPhaseContent() {
                 </section>
 
                 {/* Right: Detailed Analysis Panel */}
-                {selectedId && selectedItem && (
+                {selectedId && selectedItem ? (
                     <section style={{
                         backgroundColor: 'white', border: `1px solid ${colors.border}`, borderRadius: '16px',
                         display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
@@ -191,7 +209,12 @@ export default function CheckPhaseContent() {
                                     <div style={{ textAlign: 'center' }}>
                                         <div style={{ width: '100%', height: '140px', backgroundColor: '#F8FAFC', borderRadius: '10px', overflow: 'hidden', border: `1px solid ${colors.border}` }}>
                                             {standardImage ? (
-                                                <img src={standardImage} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="standard" />
+                                                <img
+                                                    src={standardImage}
+                                                    style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer' }}
+                                                    alt="standard"
+                                                    onClick={() => setZoomedImage(standardImage)}
+                                                />
                                             ) : (
                                                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
                                                     <LucideImage size={24} color="#CBD5E1" />
@@ -207,7 +230,12 @@ export default function CheckPhaseContent() {
                                     <div style={{ textAlign: 'center' }}>
                                         <div style={{ width: '100%', height: '140px', backgroundColor: '#F8FAFC', borderRadius: '10px', overflow: 'hidden', border: `2px solid ${colors.primaryBlue}` }}>
                                             {selectedItem.evidenceUrl ? (
-                                                <img src={selectedItem.evidenceUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="submitted" />
+                                                <img
+                                                    src={selectedItem.evidenceUrl}
+                                                    style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer' }}
+                                                    alt="submitted"
+                                                    onClick={() => setZoomedImage(selectedItem.evidenceUrl || null)}
+                                                />
                                             ) : (
                                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
                                                     <LucideImage size={24} color="#CBD5E1" />
@@ -238,7 +266,7 @@ export default function CheckPhaseContent() {
                             <div style={{ marginBottom: '24px' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
                                     <MessageSquare size={16} color="#64748B" />
-                                    <span style={{ fontWeight: 800, fontSize: '13px', color: '#475569' }}>실무자 피드백 (미준수 시 전송)</span>
+                                    <span style={{ fontWeight: 800, fontSize: '13px', color: '#475569' }}>실무자 피드백 (미승인 시 전송)</span>
                                 </div>
                                 <textarea
                                     value={feedback}
@@ -247,38 +275,105 @@ export default function CheckPhaseContent() {
                                     style={{
                                         width: '100%', height: '100px', padding: '12px', borderRadius: '10px',
                                         border: `1px solid ${colors.border}`, fontSize: '13px', resize: 'none',
-                                        fontFamily: 'inherit'
+                                        fontFamily: 'inherit', boxSizing: 'border-box'
                                     }}
                                 />
                             </div>
                         </div>
 
-                        {/* Action Buttons */}
                         <div style={{ padding: '20px', borderTop: `1px solid ${colors.border}`, display: 'flex', gap: '12px' }}>
-                            <button
-                                onClick={() => submitVerification('fail')}
-                                style={{
-                                    flex: 1, padding: '14px', borderRadius: '10px', border: '1px solid #EF4444',
-                                    backgroundColor: 'white', color: '#EF4444', fontWeight: 800, cursor: 'pointer',
-                                    transition: 'all 0.2s'
-                                }}
-                            >
-                                FAIL (미준수 확정)
-                            </button>
-                            <button
-                                onClick={() => submitVerification('pass')}
-                                style={{
-                                    flex: 1, padding: '14px', borderRadius: '10px', border: 'none',
-                                    backgroundColor: colors.success, color: 'white', fontWeight: 800, cursor: 'pointer',
-                                    boxShadow: '0 4px 6px rgba(16, 185, 129, 0.2)', transition: 'all 0.2s'
-                                }}
-                            >
-                                PASS (승인 완료)
-                            </button>
+                            {selectedItem.verificationResult === 'pass' ? (
+                                <button
+                                    onClick={() => submitVerification('cancel_approval')}
+                                    style={{
+                                        flex: 1, padding: '14px', borderRadius: '10px', border: '1px solid #64748B',
+                                        backgroundColor: 'white', color: '#64748B', fontWeight: 800, cursor: 'pointer',
+                                        transition: 'all 0.2s'
+                                    }}
+                                >
+                                    승인 취소
+                                </button>
+                            ) : selectedItem.verificationResult === 'fail' ? (
+                                <button
+                                    onClick={() => submitVerification('cancel_approval')}
+                                    style={{
+                                        flex: 1, padding: '14px', borderRadius: '10px', border: '1px solid #64748B',
+                                        backgroundColor: 'white', color: '#64748B', fontWeight: 800, cursor: 'pointer',
+                                        transition: 'all 0.2s'
+                                    }}
+                                >
+                                    미승인 취소
+                                </button>
+                            ) : (
+                                <>
+                                    <button
+                                        onClick={() => submitVerification('fail')}
+                                        style={{
+                                            flex: 1, padding: '14px', borderRadius: '10px', border: '1px solid #EF4444',
+                                            backgroundColor: 'white', color: '#EF4444', fontWeight: 800, cursor: 'pointer',
+                                            transition: 'all 0.2s'
+                                        }}
+                                    >
+                                        미승인
+                                    </button>
+                                    <button
+                                        onClick={() => submitVerification('pass')}
+                                        style={{
+                                            flex: 1, padding: '14px', borderRadius: '10px', border: 'none',
+                                            backgroundColor: colors.success, color: 'white', fontWeight: 800, cursor: 'pointer',
+                                            boxShadow: '0 4px 6px rgba(16, 185, 129, 0.2)', transition: 'all 0.2s'
+                                        }}
+                                    >
+                                        승인
+                                    </button>
+                                </>
+                            )}
                         </div>
+                    </section>
+                ) : (
+                    <section style={{
+                        backgroundColor: 'white', border: `1px solid ${colors.border}`, borderRadius: '16px',
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.05)', minHeight: '400px'
+                    }}>
+                        <Scan size={48} color="#CBD5E1" />
+                        <h3 style={{ fontWeight: 800, color: '#94A3B8', marginTop: '16px', fontSize: '16px' }}>검증 상세 리포트</h3>
+                        <p style={{ color: '#CBD5E1', fontSize: '13px', marginTop: '8px' }}>좌측 리스트에서 항목을 선택하세요</p>
                     </section>
                 )}
             </div>
+
+            {/* Zoomed Image Overlay */}
+            {zoomedImage && (
+                <div
+                    onClick={() => setZoomedImage(null)}
+                    style={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        zIndex: 9999,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'zoom-out'
+                    }}
+                >
+                    <img
+                        src={zoomedImage}
+                        alt="Zoomed"
+                        style={{
+                            maxWidth: '90vw',
+                            maxHeight: '90vh',
+                            objectFit: 'contain',
+                            borderRadius: '8px',
+                            boxShadow: '0 4px 20px rgba(0,0,0,0.5)'
+                        }}
+                    />
+                </div>
+            )}
         </div>
     );
 }

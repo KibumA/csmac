@@ -211,9 +211,9 @@ export const ChecklistBoard: React.FC<ChecklistBoardProps> = ({
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
                     <thead>
                         <tr style={{ backgroundColor: colors.headerBlue, borderBottom: `2px solid ${colors.border}`, color: colors.textDark }}>
-                            <th style={{ ...thStyle, width: '140px' }}>관리</th>
+
                             <th style={thStyle}>사업장 / 팀</th>
-                            <th style={thStyle}>직무 / 업무</th>
+                            <th style={thStyle}>직무</th>
                             <th style={{ ...thStyle, width: '220px' }}>TPO 상황 설정</th>
                             <th style={thStyle}>체크리스트 (점검 항목)</th>
                             <th style={{ ...thStyle, width: '120px', textAlign: 'center' }}>세분화설정</th>
@@ -230,40 +230,7 @@ export const ChecklistBoard: React.FC<ChecklistBoardProps> = ({
                                             transition: 'background-color 0.2s'
                                         }}
                                     >
-                                        <td style={{ ...tdStyle, verticalAlign: 'middle' }}>
-                                            <div style={{ display: 'flex', gap: '8px' }}>
-                                                <button
-                                                    onClick={(e) => { e.stopPropagation(); handleEdit(t.id); }}
-                                                    style={{
-                                                        fontSize: '0.8rem',
-                                                        color: colors.primaryBlue,
-                                                        cursor: 'pointer',
-                                                        backgroundColor: 'white',
-                                                        border: `1px solid ${colors.border}`,
-                                                        borderRadius: '4px',
-                                                        padding: '4px 10px',
-                                                        fontWeight: 'bold'
-                                                    }}
-                                                >
-                                                    수정
-                                                </button>
-                                                <button
-                                                    onClick={(e) => { e.stopPropagation(); handleRemoveRegistered(t.id); }}
-                                                    style={{
-                                                        fontSize: '0.8rem',
-                                                        color: '#D32F2F',
-                                                        cursor: 'pointer',
-                                                        backgroundColor: 'white',
-                                                        border: `1px solid ${colors.border}`,
-                                                        borderRadius: '4px',
-                                                        padding: '4px 10px',
-                                                        fontWeight: 'bold'
-                                                    }}
-                                                >
-                                                    삭제
-                                                </button>
-                                            </div>
-                                        </td>
+
                                         <td style={tdStyle}>
                                             <div style={{ fontWeight: 'bold', color: colors.textDark }}>{t.workplace}</div>
                                             <div style={{ fontSize: '0.85rem', color: colors.textGray }}>{teams[t.team]?.label}</div>
@@ -345,7 +312,6 @@ export const ChecklistBoard: React.FC<ChecklistBoardProps> = ({
                                             backgroundColor: '#F8F9FA',
                                             borderBottom: tsIdx === t.setupTasks!.length - 1 ? `1px solid ${colors.border}` : 'none'
                                         }}>
-                                            <td colSpan={1}></td>
                                             <td colSpan={3}></td>
                                             <td style={{ padding: '8px 10px 8px 30px', borderLeft: `3px solid ${colors.primaryBlue}` }}>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -415,7 +381,7 @@ export const ChecklistBoard: React.FC<ChecklistBoardProps> = ({
                             ))}
                         {filteredTpos.length === 0 && (
                             <tr>
-                                <td colSpan={6} style={{ padding: '50px', textAlign: 'center', color: colors.textGray }}>
+                                <td colSpan={5} style={{ padding: '50px', textAlign: 'center', color: colors.textGray }}>
                                     <div style={{ fontSize: '2rem', marginBottom: '10px' }}>📋</div>
                                     <div>등록된 점검 리스트가 없습니다.</div>
                                     <div style={{ fontSize: '0.85rem', marginTop: '5px' }}>Plan 단계에서 새로운 TPO를 등록해주세요.</div>

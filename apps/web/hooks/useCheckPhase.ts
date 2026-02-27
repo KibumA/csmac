@@ -17,12 +17,17 @@ export function useCheckPhase() {
     const [mounted, setMounted] = useState(false);
 
     const fetchVerificationList = useCallback(async () => {
-        const { data, error } = await supabase
+        let query = supabase
             .from('job_instructions')
             .select('*')
-            .eq('team', team)
             .in('status', ['completed', 'non_compliant'])
             .order('completed_at', { ascending: false });
+
+        if (team !== '전체') {
+            query = query.eq('team', team);
+        }
+
+        const { data, error } = await query;
 
         if (data) {
             const mapped: JobInstruction[] = data.map((item: JobInstructionDB) => mapDbToJobInstruction(item));
@@ -35,6 +40,16 @@ export function useCheckPhase() {
         setMounted(true);
         fetchVerificationList();
     }, [fetchVerificationList]);
+
+    // Sync feedback state when selected item changes
+    useEffect(() => {
+        if (selectedId) {
+            const item = verificationList.find(i => i.id === selectedId);
+            setFeedback(item?.feedbackComment || '');
+        } else {
+            setFeedback('');
+        }
+    }, [selectedId, verificationList]);
 
     const handleBatchAnalysis = async () => {
         setIsAnalyzing(true);
@@ -67,21 +82,30 @@ export function useCheckPhase() {
         setIsAnalyzing(false);
     };
 
-    const submitVerification = async (result: 'pass' | 'fail') => {
+    const submitVerification = async (result: 'pass' | 'fail' | 'cancel_approval') => {
         if (!selectedId) return;
+
+        const newVerificationResult = result === 'cancel_approval' ? null : result;
+        const newStatus = result === 'cancel_approval' ? 'completed' : (result === 'fail' ? 'non_compliant' : 'completed');
 
         // 1. Persistent Fallback
         saveMockData(selectedId, {
-            feedbackComment: feedback,
-            verificationResult: result
+            feedbackComment: result === 'cancel_approval' ? '' : feedback,
+            verificationResult: newVerificationResult as any
         });
 
         // 2. Resolve
-        await resolveActionItem(selectedId, {
-            verificationResult: result,
-            status: result === 'fail' ? 'non_compliant' : 'completed',
-            feedbackComment: feedback
+        console.log('[useCheckPhase] submitting resolveActionItem:', {
+            verificationResult: newVerificationResult,
+            status: newStatus,
+            feedbackComment: result === 'cancel_approval' ? '' : feedback
         });
+
+        await resolveActionItem(selectedId, {
+            verificationResult: newVerificationResult,
+            status: newStatus as any,
+            feedbackComment: result === 'cancel_approval' ? '' : feedback
+        } as any);
 
         setFeedback('');
         setSelectedId(null);

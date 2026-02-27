@@ -7,9 +7,10 @@ interface MobileJobDetailProps {
     onClose: () => void;
     onStart: () => void;
     onComplete: (file: File | null) => void;
+    onRevert?: () => void;
 }
 
-export const MobileJobDetail: React.FC<MobileJobDetailProps> = ({ task, onClose, onStart, onComplete }) => {
+export const MobileJobDetail: React.FC<MobileJobDetailProps> = ({ task, onClose, onStart, onComplete, onRevert }) => {
     const [evidenceFile, setEvidenceFile] = React.useState<File | null>(null);
     const [previewUrl, setPreviewUrl] = React.useState<string | null>(null);
 
@@ -84,10 +85,10 @@ export const MobileJobDetail: React.FC<MobileJobDetailProps> = ({ task, onClose,
                 </div>
 
                 {/* Feedback Section */}
-                {(task.feedbackComment || task.aiScore) && (
+                {(task.feedbackComment || task.aiScore !== null) && (
                     <div style={{ marginBottom: '20px', border: `1px solid ${colors.error}`, padding: '15px', borderRadius: '10px', backgroundColor: '#fff1f2' }}>
                         <h3 style={{ fontSize: '0.95rem', fontWeight: 'bold', color: '#991b1b', marginTop: 0, marginBottom: '10px' }}>매니저 피드백 / AI 분석</h3>
-                        {task.aiScore && (
+                        {task.aiScore !== null && task.aiScore !== undefined && (
                             <div style={{ marginBottom: '8px', fontSize: '0.9rem' }}>
                                 <span style={{ fontWeight: 'bold' }}>AI 신뢰도 점수:</span> {task.aiScore}%
                             </div>
@@ -102,9 +103,9 @@ export const MobileJobDetail: React.FC<MobileJobDetailProps> = ({ task, onClose,
 
                 {/* Description */}
                 <div style={{ marginBottom: '20px', backgroundColor: '#F8F9FA', padding: '15px', borderRadius: '10px' }}>
-                    <h3 style={{ fontSize: '0.95rem', fontWeight: 'bold', color: colors.textGray, marginTop: 0, marginBottom: '10px' }}>상세 지시사항</h3>
+                    <h3 style={{ fontSize: '0.95rem', fontWeight: 'bold', color: colors.textGray, marginTop: 0, marginBottom: '10px' }}>추가사항</h3>
                     <p style={{ margin: 0, lineHeight: '1.6', color: colors.textDark, whiteSpace: 'pre-wrap' }}>
-                        {task.description || '상세 내용이 없습니다.'}
+                        {task.description || '추가사항이 없습니다.'}
                     </p>
                 </div>
 
@@ -151,9 +152,17 @@ export const MobileJobDetail: React.FC<MobileJobDetailProps> = ({ task, onClose,
                 {/* Main Action Buttons */}
                 <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
                     {task.status === 'completed' ? (
-                        <div style={{ width: '100%', padding: '15px', textAlign: 'center', backgroundColor: '#f1f5f9', color: colors.textGray, borderRadius: '12px', fontWeight: 'bold' }}>
-                            이미 완료된 업무입니다
-                        </div>
+                        <button
+                            onClick={onRevert}
+                            style={{
+                                width: '100%', padding: '15px', borderRadius: '12px',
+                                border: `1px solid ${colors.border}`, backgroundColor: 'white',
+                                color: '#64748B', fontWeight: 'bold', cursor: 'pointer',
+                                fontSize: '1rem'
+                            }}
+                        >
+                            완료 취소
+                        </button>
                     ) : (
                         <>
                             {task.status !== 'in_progress' && (
@@ -179,7 +188,7 @@ export const MobileJobDetail: React.FC<MobileJobDetailProps> = ({ task, onClose,
                                         opacity: (!evidenceFile) ? 0.9 : 1
                                     }}
                                 >
-                                    {evidenceFile ? '업무 완료 (사진 제출)' : '업무 완료 (사진 없음)'}
+                                    {evidenceFile ? '업무 완료 (사진 제출)' : '업무 완료'}
                                 </button>
                             )}
                         </>

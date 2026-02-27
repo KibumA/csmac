@@ -43,6 +43,45 @@ export const InstructionLibrary: React.FC = () => {
     const [selectedDetailItem, setSelectedDetailItem] = useState<RegisteredTpo | null>(null);
     const [isDetailModalOpen, setDetailModalOpen] = useState(false);
 
+    const handleUpdateImage = async (itemId: number | undefined, file: File) => {
+        if (!itemId) {
+            addToast('항목 ID를 찾을 수 없습니다.', 'error');
+            return;
+        }
+
+        try {
+            const { supabase } = await import('../../../utils/supabaseClient');
+
+            const fileExt = file.name.split('.').pop();
+            const fileName = `guide_${Date.now()}_${Math.random()}.${fileExt}`;
+            const { error: uploadError } = await supabase.storage.from('evidence-photos').upload(fileName, file);
+
+            if (uploadError) throw uploadError;
+
+            const { data: { publicUrl } } = supabase.storage.from('evidence-photos').getPublicUrl(fileName);
+
+            const { error: dbError } = await supabase
+                .from('checklist_items')
+                .update({ reference_image_url: publicUrl })
+                .eq('id', itemId);
+
+            if (dbError) throw dbError;
+
+            setSelectedDetailItem(prev => {
+                if (!prev) return null;
+                const updatedItems = ((prev as any).displayItems || prev.criteria.items || []).map((item: any) =>
+                    item.id === itemId ? { ...item, imageUrl: publicUrl } : item
+                );
+                return { ...prev, displayItems: updatedItems } as RegisteredTpo;
+            });
+
+            addToast('표준 가이드 이미지가 등록되었습니다.', 'success');
+        } catch (error) {
+            console.error('Error updating image:', error);
+            addToast('이미지 등록 중 오류가 발생했습니다.', 'error');
+        }
+    };
+
     // Dynamically derive options from data
     const occasions = Array.from(new Set(registeredTpos.map(t => t.tpo.occasion))).sort();
 
@@ -325,6 +364,7 @@ export const InstructionLibrary: React.FC = () => {
                             ? isDeployed((selectedDetailItem as FlattenedLibraryItem).currentGroupId)
                             : (selectedDetailItem.setupTasks?.[0] && isDeployed(selectedDetailItem.setupTasks[0].id))
                     )}
+                    onUpdateImage={handleUpdateImage}
                 />
             )}
         </div>

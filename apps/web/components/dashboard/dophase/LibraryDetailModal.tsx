@@ -9,10 +9,14 @@ interface LibraryDetailModalProps {
     onAddToBoard?: () => void;
     isDeployed?: boolean;
     hideActionButton?: boolean;
+    description?: string;
+    onSaveDescription?: (desc: string) => void;
+    onUpdateImage?: (itemId: number | undefined, file: File) => void;
 }
 
-export const LibraryDetailModal: React.FC<LibraryDetailModalProps> = ({ data, onClose, onAddToBoard, isDeployed, hideActionButton }) => {
+export const LibraryDetailModal: React.FC<LibraryDetailModalProps> = ({ data, onClose, onAddToBoard, isDeployed, hideActionButton, description: initialDescription, onSaveDescription, onUpdateImage }) => {
     const [selectedItemIndex, setSelectedItemIndex] = useState<number>(0);
+    const [desc, setDesc] = useState<string>(initialDescription || '');
 
     return (
         <div style={{
@@ -62,126 +66,167 @@ export const LibraryDetailModal: React.FC<LibraryDetailModalProps> = ({ data, on
                     >✕</button>
                 </div>
 
-                {/* Content: Two-Pane Layout */}
-                <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
-                    {/* Left Pane: Checklist Items */}
-                    <div style={{
-                        flex: 1,
-                        borderRight: `1px solid ${colors.border}`,
-                        padding: '32px',
-                        overflowY: 'auto',
-                        backgroundColor: 'white'
-                    }}>
-                        <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', color: colors.textDark }}>세부 점검 리스트</h3>
-                            <span style={{ fontSize: '0.85rem', color: colors.primaryBlue, fontWeight: 'bold' }}>{((data as any).displayItems || data.criteria.items).length}개 항목</span>
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                            {((data as any).displayItems || data.criteria.items).map((item: any, idx: number) => (
-                                <div
-                                    key={idx}
-                                    onClick={() => setSelectedItemIndex(idx)}
-                                    style={{
-                                        padding: '20px',
-                                        borderRadius: '12px',
-                                        border: `1px solid ${selectedItemIndex === idx ? colors.primaryBlue : colors.border}`,
-                                        backgroundColor: selectedItemIndex === idx ? '#F0F7FF' : 'white',
-                                        cursor: 'pointer',
-                                        display: 'flex',
-                                        gap: '15px',
-                                        alignItems: 'center',
-                                        transition: 'all 0.2s'
-                                    }}
-                                >
-                                    {item.imageUrl ? (
-                                        <div style={{ width: '60px', height: '60px', borderRadius: '8px', overflow: 'hidden', flexShrink: 0 }}>
-                                            <img src={item.imageUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                        </div>
-                                    ) : (
-                                        <div style={{ width: '60px', height: '60px', borderRadius: '8px', backgroundColor: '#F5F5F5', display: 'flex', alignItems: 'center', justifyContent: 'center', color: colors.textGray, fontSize: '1.2rem', flexShrink: 0 }}>
-                                            📷
-                                        </div>
-                                    )}
-                                    <div style={{ flex: 1 }}>
-                                        <div style={{ fontSize: '1rem', fontWeight: '500', color: colors.textDark, marginBottom: '4px' }}>{item.content}</div>
-                                        <div style={{ fontSize: '0.8rem', color: colors.textGray }}>인스펙션 기준 준수여부 확인</div>
-                                    </div>
-                                    <div style={{
-                                        padding: '4px 10px',
-                                        borderRadius: '12px',
-                                        fontSize: '0.75rem',
-                                        backgroundColor: selectedItemIndex === idx ? colors.primaryBlue : '#F5F5F5',
-                                        color: selectedItemIndex === idx ? 'white' : colors.textGray,
-                                        fontWeight: 'bold'
-                                    }}>
-                                        {selectedItemIndex === idx ? '선택됨' : '미선택'}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Right Pane: Item Details */}
-                    <div style={{ flex: 1, padding: '32px', display: 'flex', flexDirection: 'column', backgroundColor: '#FAFAFA', overflowY: 'auto' }}>
-                        <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', color: colors.textDark, marginBottom: '20px' }}>준수 사항 상세</h3>
-
-                        {((data as any).displayItems || data.criteria.items)[selectedItemIndex] ? (
-                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '24px' }}>
-
-
-                                <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: '16px', border: `1px solid ${colors.border}` }}>
-                                    <div style={{ fontSize: '0.9rem', color: colors.textGray, marginBottom: '15px' }}>핵심 점검 포인트 (집중 관리)</div>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                                        {getCheckPoints(((data as any).displayItems || data.criteria.items)[selectedItemIndex].content).map((point, pIdx) => (
-                                            <div key={pIdx} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                                                <div style={{
-                                                    marginTop: '4px',
-                                                    width: '18px',
-                                                    height: '18px',
-                                                    borderRadius: '4px',
-                                                    border: `1.5px solid ${colors.primaryBlue}`,
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'center',
-                                                    color: colors.primaryBlue,
-                                                    fontSize: '0.7rem',
-                                                    fontWeight: 'bold',
-                                                    flexShrink: 0
-                                                }}>
-                                                    {pIdx + 1}
-                                                </div>
-                                                <div style={{ fontSize: '0.95rem', color: colors.textDark, lineHeight: '1.5' }}>{point}</div>
+                {/* Content Area */}
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                    {/* Top: Two-Pane Layout */}
+                    <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+                        {/* Left Pane: Checklist Items */}
+                        <div style={{
+                            flex: 1,
+                            borderRight: `1px solid ${colors.border}`,
+                            padding: '32px',
+                            overflowY: 'auto',
+                            backgroundColor: 'white'
+                        }}>
+                            <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', color: colors.textDark }}>세부 점검 리스트</h3>
+                                <span style={{ fontSize: '0.85rem', color: colors.primaryBlue, fontWeight: 'bold' }}>{((data as any).displayItems || data.criteria.items).length}개 항목</span>
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                {((data as any).displayItems || data.criteria.items).map((item: any, idx: number) => (
+                                    <div
+                                        key={idx}
+                                        onClick={() => setSelectedItemIndex(idx)}
+                                        style={{
+                                            padding: '20px',
+                                            borderRadius: '12px',
+                                            border: `1px solid ${selectedItemIndex === idx ? colors.primaryBlue : colors.border}`,
+                                            backgroundColor: selectedItemIndex === idx ? '#F0F7FF' : 'white',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            gap: '15px',
+                                            alignItems: 'center',
+                                            transition: 'all 0.2s'
+                                        }}
+                                    >
+                                        {item.imageUrl ? (
+                                            <div style={{ width: '60px', height: '60px', borderRadius: '8px', overflow: 'hidden', flexShrink: 0 }}>
+                                                <img src={item.imageUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                             </div>
-                                        ))}
+                                        ) : (
+                                            <label
+                                                style={{ width: '60px', height: '60px', borderRadius: '8px', backgroundColor: '#F5F5F5', display: 'flex', alignItems: 'center', justifyContent: 'center', color: colors.textGray, fontSize: '1.2rem', flexShrink: 0, cursor: 'pointer', transition: 'background-color 0.2s' }}
+                                                onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#E5E7EB'}
+                                                onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#F5F5F5'}
+                                                onClick={(e) => e.stopPropagation()} // Prevent selecting the item when trying to add image
+                                            >
+                                                📷
+                                                <input
+                                                    type="file"
+                                                    accept="image/*"
+                                                    style={{ display: 'none' }}
+                                                    onChange={(e) => {
+                                                        const file = e.target.files?.[0];
+                                                        if (file && onUpdateImage) {
+                                                            onUpdateImage(item.id, file);
+                                                        }
+                                                    }}
+                                                />
+                                            </label>
+                                        )}
+                                        <div style={{ flex: 1 }}>
+                                            <div style={{ fontSize: '1rem', fontWeight: '500', color: colors.textDark, marginBottom: '4px' }}>{item.content}</div>
+                                            <div style={{ fontSize: '0.8rem', color: colors.textGray }}>인스펙션 기준 준수여부 확인</div>
+                                        </div>
+                                        <div style={{
+                                            padding: '4px 10px',
+                                            borderRadius: '12px',
+                                            fontSize: '0.75rem',
+                                            backgroundColor: selectedItemIndex === idx ? colors.primaryBlue : '#F5F5F5',
+                                            color: selectedItemIndex === idx ? 'white' : colors.textGray,
+                                            fontWeight: 'bold'
+                                        }}>
+                                            {selectedItemIndex === idx ? '선택됨' : '미선택'}
+                                        </div>
                                     </div>
-                                </div>
+                                ))}
+                            </div>
+                        </div>
 
-                                <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: '16px', border: `1px solid ${colors.border}` }}>
-                                    <div style={{ fontSize: '0.9rem', color: colors.textGray, marginBottom: '12px' }}>수행 근거 및 방법</div>
-                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                                        <span style={{ padding: '6px 14px', borderRadius: '8px', backgroundColor: '#E8F5E9', color: '#2E7D32', fontSize: '0.85rem', fontWeight: 'bold' }}>{data.matching.evidence} 증빙</span>
-                                        <span style={{ padding: '6px 14px', borderRadius: '8px', backgroundColor: '#FFF3E0', color: '#E65100', fontSize: '0.85rem', fontWeight: 'bold' }}>{data.matching.method} 수행</span>
-                                        {data.matching.elements?.map(e => (
-                                            <span key={e} style={{ padding: '6px 14px', borderRadius: '8px', backgroundColor: '#F3E5F5', color: '#7B1FA2', fontSize: '0.85rem', fontWeight: 'bold' }}>{e}</span>
-                                        ))}
+                        {/* Right Pane */}
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: '#FAFAFA', overflow: 'hidden' }}>
+                            {/* Top: Item Details (Scrollable) */}
+                            <div style={{ flex: 1, padding: '32px', overflowY: 'auto' }}>
+                                <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', color: colors.textDark, marginBottom: '20px' }}>준수 사항 상세</h3>
+
+                                {((data as any).displayItems || data.criteria.items)[selectedItemIndex] ? (
+                                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                                            <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: '16px', border: `1px solid ${colors.border}` }}>
+                                                <div style={{ fontSize: '0.9rem', color: colors.textGray, marginBottom: '15px' }}>핵심 점검 포인트 (집중 관리)</div>
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                                    {getCheckPoints(((data as any).displayItems || data.criteria.items)[selectedItemIndex].content).map((point, pIdx) => (
+                                                        <div key={pIdx} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                                                            <div style={{
+                                                                marginTop: '4px', width: '18px', height: '18px', borderRadius: '4px',
+                                                                border: `1.5px solid ${colors.primaryBlue}`, display: 'flex', alignItems: 'center',
+                                                                justifyContent: 'center', color: colors.primaryBlue, fontSize: '0.7rem',
+                                                                fontWeight: 'bold', flexShrink: 0
+                                                            }}>
+                                                                {pIdx + 1}
+                                                            </div>
+                                                            <div style={{ fontSize: '0.95rem', color: colors.textDark, lineHeight: '1.5' }}>{point}</div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: '16px', border: `1px solid ${colors.border}` }}>
+                                                <div style={{ fontSize: '0.9rem', color: colors.textGray, marginBottom: '12px' }}>수행 근거 및 방법</div>
+                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                                                    <span style={{ padding: '6px 14px', borderRadius: '8px', backgroundColor: '#E8F5E9', color: '#2E7D32', fontSize: '0.85rem', fontWeight: 'bold' }}>{data.matching.evidence} 증빙</span>
+                                                    <span style={{ padding: '6px 14px', borderRadius: '8px', backgroundColor: '#FFF3E0', color: '#E65100', fontSize: '0.85rem', fontWeight: 'bold' }}>{data.matching.method} 수행</span>
+                                                    {data.matching.elements?.map(e => (
+                                                        <span key={e} style={{ padding: '6px 14px', borderRadius: '8px', backgroundColor: '#F3E5F5', color: '#7B1FA2', fontSize: '0.85rem', fontWeight: 'bold' }}>{e}</span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: colors.textGray }}>
+                                        왼쪽 항목을 클릭하면 상세 내용을 볼 수 있습니다.
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Bottom: Description (Fixed at bottom of right pane) */}
+                            {onSaveDescription && (
+                                <div style={{ padding: '24px 32px', borderTop: `2px solid #EAEAEA`, backgroundColor: '#FAFAFA', flexShrink: 0 }}>
+                                    <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '16px', border: `1px solid ${colors.border}` }}>
+                                        <div style={{ fontWeight: 'bold', fontSize: '1rem', color: colors.textDark, marginBottom: '10px' }}>추가사항 (이 업무 카드 전체에 적용)</div>
+                                        <textarea
+                                            value={desc}
+                                            onChange={(e) => setDesc(e.target.value)}
+                                            placeholder="이 업무에 대한 추가 지시사항이나 특이사항을 입력하세요..."
+                                            style={{
+                                                width: '100%', height: '80px', padding: '12px', borderRadius: '10px',
+                                                border: `1px solid ${colors.border}`, fontSize: '0.9rem', resize: 'none',
+                                                fontFamily: 'inherit', lineHeight: '1.5', boxSizing: 'border-box'
+                                            }}
+                                        />
+                                        <div style={{ marginTop: '10px', display: 'flex', justifyContent: 'flex-start' }}>
+                                            <button
+                                                onClick={() => onSaveDescription(desc)}
+                                                style={{
+                                                    padding: '8px 24px', borderRadius: '8px',
+                                                    border: 'none', backgroundColor: colors.primaryBlue, color: 'white',
+                                                    fontWeight: 'bold', fontSize: '0.9rem', cursor: 'pointer'
+                                                }}
+                                            >
+                                                저장
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        ) : (
-                            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: colors.textGray }}>
-                                왼쪽 항목을 클릭하면 상세 내용을 볼 수 있습니다.
-                            </div>
-                        )}
+                            )}
+                        </div>
                     </div>
                 </div>
 
-                {/* Footer Actions */}
-                <div style={{ padding: '24px 32px', borderTop: `1px solid ${colors.border}`, display: 'flex', justifyContent: 'flex-end', gap: '12px', backgroundColor: 'white' }}>
-                    <button
-                        onClick={onClose}
-                        style={{ padding: '12px 24px', borderRadius: '10px', border: `1px solid ${colors.border}`, backgroundColor: 'white', fontWeight: 'bold', cursor: 'pointer' }}
-                    >취소</button>
-                    {!hideActionButton && onAddToBoard && (
+                {/* Footer Actions (Conditionally rendered) */}
+                {(!hideActionButton && onAddToBoard) && (
+                    <div style={{ padding: '24px 32px', borderTop: `1px solid ${colors.border}`, display: 'flex', justifyContent: 'flex-end', gap: '12px', backgroundColor: 'white' }}>
                         <button
                             onClick={onAddToBoard}
                             style={{
@@ -196,8 +241,8 @@ export const LibraryDetailModal: React.FC<LibraryDetailModalProps> = ({ data, on
                         >
                             {isDeployed ? '보드에서 제거' : '우리팀 보드로'}
                         </button>
-                    )}
-                </div>
+                    </div>
+                )}
             </div>
         </div>
     );

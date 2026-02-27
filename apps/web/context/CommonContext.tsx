@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '../utils/supabaseClient';
 import { Phase, RegisteredTpo, ChecklistItem, TpoData } from '@csmac/types';
+import { DEFAULT_WORKPLACE } from '../constants/pdca-data';
 
 export interface CommonContextType {
     activePhase: Phase;
@@ -20,7 +21,7 @@ const CommonContext = createContext<CommonContextType | undefined>(undefined);
 
 export const CommonProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [activePhase, setActivePhase] = useState<Phase>('command');
-    const [workplace, setWorkplace] = useState('소노벨 천안');
+    const [workplace, setWorkplace] = useState<string>(DEFAULT_WORKPLACE);
     const [team, setTeam] = useState('전체');
     const [job, setJob] = useState('전체');
     const [registeredTpos, setRegisteredTpos] = useState<RegisteredTpo[]>([]);
@@ -52,7 +53,7 @@ export const CommonProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
             if (data) {
                 const transformed: RegisteredTpo[] = data.map((row: any) => {
-                    const itemsMap: Record<number, ChecklistItem> = {};
+                    const itemsMap: Record<string, ChecklistItem> = {};
                     const checklistItems = row.checklist_items?.map((i: any) => {
                         const item = {
                             ...i,
@@ -60,7 +61,7 @@ export const CommonProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                             imageUrl: i.reference_image_url || i.image_url || undefined,
                             id: i.id
                         };
-                        itemsMap[i.id] = item;
+                        itemsMap[String(i.id)] = item;
                         return item;
                     }) || [];
 
@@ -68,7 +69,7 @@ export const CommonProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                         return {
                             id: group.id,
                             items: group.task_group_items
-                                ?.map((tgi: any) => itemsMap[tgi.checklist_item_id])
+                                ?.map((tgi: any) => itemsMap[String(tgi.checklist_item_id)])
                                 .filter(Boolean) || []
                         };
                     }) || [];

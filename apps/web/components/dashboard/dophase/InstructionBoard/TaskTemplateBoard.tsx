@@ -70,8 +70,8 @@ export const TaskTemplateBoard: React.FC<TaskTemplateBoardProps> = ({ tasks, ass
                         gap: '10px'
                     }}>
                         {teamTasks.map(task => {
-                            const assignedMembers = (assignments[task.id] || [])
-                                .map(id => members.find(m => m.id === id))
+                            const assignedMembers = (task.assignedMemberIds || [])
+                                .map(name => members.find(m => m.name === name))
                                 .filter(Boolean) as TeamMember[];
                             return (
                                 <TaskCard

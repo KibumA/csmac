@@ -109,7 +109,7 @@ export const JobCardModal: React.FC<JobCardModalProps> = ({
                         addJobInstruction({
                             targetTeam: team,
                             team: team,
-                            assignee: '',
+                            assignee: null,
                             subject: instructionSubject,
                             description: instructionDescription,
                             deadline: new Date().toISOString(),

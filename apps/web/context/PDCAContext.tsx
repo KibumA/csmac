@@ -5,7 +5,7 @@ import { DoProvider, useDo } from './DoContext';
 import { ActProvider, useAct } from './ActContext';
 import { ToastProvider } from './ToastContext';
 import { ActionPlanItem, InspectionRecord, RegisteredTpo } from '@csmac/types';
-import { TEAMS, TPO_OPTIONS, PLACE_OCCASION_MAPPING, CRITERIA_OPTIONS } from '../constants/pdca-data';
+import { TEAMS, TPO_OPTIONS, PLACE_OCCASION_MAPPING, CRITERIA_OPTIONS, WORKPLACES } from '../constants/pdca-data';
 
 export const PDCAProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     return (
@@ -60,6 +60,7 @@ export const usePDCA = () => {
         tpoOptions: TPO_OPTIONS,
         placeOccasionMapping: PLACE_OCCASION_MAPPING,
         criteriaOptions: CRITERIA_OPTIONS,
+        workplaces: WORKPLACES,
         currentCriteria
     }), [common, plan, doPhase, act, addInspectionResult, currentCriteria]);
 };

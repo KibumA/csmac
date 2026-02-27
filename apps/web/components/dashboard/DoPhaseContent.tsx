@@ -5,7 +5,6 @@ import { usePDCA } from '../../context/PDCAContext';
 import { colors } from '../../styles/theme';
 import { InstructionBoard } from './dophase/InstructionBoard';
 import { ChecklistBoard } from './dophase/ChecklistBoard';
-import { ActionPlanBoard } from './dophase/ActionPlanBoard';
 import { JobCardBoard } from './dophase/JobCardBoard';
 import { JobCardModal } from './dophase/JobCardModal';
 import { TpoSetupModal } from './dophase/TpoSetupModal';
@@ -50,8 +49,7 @@ const DoPhaseContent = () => {
                     { key: 'checklist', label: '업무수행 점검리스트' },
                     { key: 'library', label: '업무지시 라이브러리' },
                     { key: 'instruction', label: '업무지시 보드' },
-                    { key: 'jobcard', label: '직무카드 현황' },
-                    { key: 'actionplan', label: '조치계획 보드' }
+                    { key: 'jobcard', label: '직무카드 현황' }
                 ] as Array<{ key: string; label: string; isNew?: boolean }>).map(tab => (
                     <div
                         key={tab.key}
@@ -99,10 +97,6 @@ const DoPhaseContent = () => {
                     handleEdit={handleEdit}
                     handleRemoveRegistered={handleRemoveRegistered}
                 />
-            )}
-
-            {activeDoSubPhase === 'actionplan' && (
-                <ActionPlanBoard />
             )}
 
             {activeDoSubPhase === 'jobcard' && (

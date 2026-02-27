@@ -50,10 +50,16 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, assignedMembers, onUna
                 <h4 style={{ fontWeight: 'bold', color: '#1F2937', fontSize: '0.875rem', lineHeight: '1.25', marginBottom: '4px' }}>
                     {task.criteria?.checklist || '업무 내용 없음'}
                 </h4>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.75rem', color: '#6B7280' }}>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '2px' }}><MapPin size={12} /> {task.tpo.place}</span>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '2px' }}><Clock size={12} /> {task.tpo.occasion}</span>
-                </div>
+                {task.displayItems && task.displayItems.length > 0 && (
+                    <div style={{ marginTop: '8px', padding: '6px 8px', backgroundColor: '#F8FAFC', borderRadius: '6px', fontSize: '0.7rem', color: '#64748B', lineHeight: '1.4' }}>
+                        {task.displayItems.map((item, i) => (
+                            <div key={i} style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
+                                <span style={{ color: '#94A3B8' }}>•</span>
+                                <span>{item.content}</span>
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
 
             {/* Droppable Area / Assigned Members */}
@@ -75,6 +81,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, assignedMembers, onUna
                                     {m.name.charAt(0)}
                                 </div>
                                 <span style={{ fontSize: '0.75rem', fontWeight: 500, color: '#374151' }}>{m.name}</span>
+                                <span style={{ fontSize: '0.65rem', color: '#9CA3AF' }}>{m.role}</span>
                                 <button
                                     onClick={() => onUnassign(task.id, m.id)}
                                     style={{ marginLeft: '2px', color: '#9CA3AF', cursor: 'pointer', border: 'none', background: 'none' }}
@@ -94,6 +101,6 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, assignedMembers, onUna
                     </div>
                 )}
             </div>
-        </div>
+        </div >
     );
 };

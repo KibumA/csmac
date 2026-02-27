@@ -85,6 +85,8 @@ export interface JobInstructionDB {
     deadline: string | null;
     started_at: string | null;
     completed_at: string | null;
+    workplace: string | null;
+    job: string | null;
     created_at: string;
 }
 

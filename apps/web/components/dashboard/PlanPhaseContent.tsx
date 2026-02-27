@@ -22,12 +22,13 @@ export default function PlanPhaseContent() {
         teams,
         tpoOptions,
         criteriaOptions,
+        workplaces,
         activeDropdown, setActiveDropdown,
         selectedTpo, handleTpoSelect,
         selectedCriteria,
         selectedMatching, handleMatchingSelect,
         registeredTpos,
-        handleRegister,
+        handleRegister, handleReset,
         handleRemoveRegistered, handleEdit,
         isEditing,
         showTpoTooltip, setShowTpoTooltip,
@@ -91,7 +92,7 @@ export default function PlanPhaseContent() {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '15px', marginBottom: '20px' }}>
                     {[
                         { label: '브랜드', value: 'Grand Walkerhill' },
-                        { label: '사업장', value: workplace, setter: setWorkplace, options: ['소노벨 천안', '소노벨 경주'] },
+                        { label: '사업장', value: workplace, setter: setWorkplace, options: [...workplaces] },
                         {
                             label: '팀',
                             value: team,
@@ -104,7 +105,7 @@ export default function PlanPhaseContent() {
                                 }
                             },
                             options: [
-                                { val: '전체', lab: '전체' },
+                                { val: '전체', lab: '전팀' },
                                 ...Object.keys(teams).map(k => ({ val: k, lab: teams[k].label }))
                             ]
                         },
@@ -112,7 +113,7 @@ export default function PlanPhaseContent() {
                             label: '직무',
                             value: job,
                             setter: setJob,
-                            options: team !== '전체' && teams[team] ? teams[team].jobs : ['전체']
+                            options: team !== '전체' && teams[team] ? teams[team].jobs : ['전직무']
                         }
                     ].map((cfg, i) => (
                         <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
@@ -431,6 +432,21 @@ export default function PlanPhaseContent() {
 
                 {/* Action Buttons */}
                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '20px', gap: '10px' }}>
+                    {isEditing !== null && (
+                        <button
+                            type="button"
+                            onClick={handleReset}
+                            style={{
+                                ...actionButtonStyle,
+                                backgroundColor: 'white',
+                                color: '#6B7280',
+                                border: `1px solid ${colors.border}`,
+                                cursor: 'pointer'
+                            }}
+                        >
+                            취소
+                        </button>
+                    )}
                     <button
                         type="button"
                         onClick={handleRegister}
@@ -552,7 +568,7 @@ export default function PlanPhaseContent() {
                                 <tr style={{ backgroundColor: '#CFD9EA' }}>
                                     <th style={{ ...thStyle, width: '100px' }}>관리</th>
                                     <th style={thStyle}>사업장 / 팀</th>
-                                    <th style={thStyle}>직무 / 업무</th>
+                                    <th style={thStyle}>직무</th>
                                     <th style={{ ...thStyle, width: '200px' }}>TPO 상황 설정</th>
                                     <th style={thStyle}>체크리스트</th>
                                     <th style={thStyle}>업무요소</th>

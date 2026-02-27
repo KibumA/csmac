@@ -11,7 +11,7 @@ interface CommandCenterCardProps {
 
 const STATUS_CONFIG: Record<JobInstructionStatus, { label: string; bg: string; color: string }> = {
     waiting: { label: '대기', bg: '#F1F5F9', color: '#64748B' },
-    in_progress: { label: '실행', bg: '#DBEAFE', color: '#2563EB' },
+    in_progress: { label: '진행', bg: '#DBEAFE', color: '#2563EB' },
     completed: { label: '완료', bg: '#DCFCE7', color: '#16A34A' },
     delayed: { label: '지연중', bg: '#FFEDD5', color: '#EA580C' },
     non_compliant: { label: '미준수', bg: '#FEE2E2', color: '#DC2626' },
@@ -132,7 +132,7 @@ export function CommandCenterCard({ instruction, onStatusChange }: CommandCenter
                             borderRadius: '4px', cursor: 'pointer',
                         }}
                     >
-                        ◀ 전
+                        ◀◀ 업무 전
                     </button>
                 )}
                 {instruction.status !== 'in_progress' && instruction.status !== 'delayed' && (
@@ -144,7 +144,7 @@ export function CommandCenterCard({ instruction, onStatusChange }: CommandCenter
                             borderRadius: '4px', cursor: 'pointer',
                         }}
                     >
-                        중간
+                        ◀ 진행 중
                     </button>
                 )}
                 {instruction.status !== 'completed' && instruction.status !== 'non_compliant' && (

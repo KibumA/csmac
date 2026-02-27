@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
     DndContext,
     DragOverlay,
@@ -19,8 +19,7 @@ import { TEAM_ROSTERS } from '../../../constants/team-rosters';
 import { TeamRosterPanel } from './InstructionBoard/TeamRosterPanel';
 import { TaskTemplateBoard } from './InstructionBoard/TaskTemplateBoard';
 import { LibraryDetailModal } from './LibraryDetailModal';
-import { User, Send } from 'lucide-react';
-
+import { RefreshCw } from 'lucide-react';
 
 export const InstructionBoard = () => {
     const {
@@ -30,21 +29,23 @@ export const InstructionBoard = () => {
         deployedTaskGroupIds,
         assignMemberToTask,
         unassignMemberFromTask,
-        batchDeployTasks,
+        workplaces,
         instructionBoardWorkplace, setInstructionBoardWorkplace,
         instructionBoardTeams, setInstructionBoardTeams,
-        instructionBoardJobs, setInstructionBoardJobs
+        fetchJobInstructions
     } = usePDCA();
     const { addToast } = useToast();
 
     const [activeDraggable, setActiveDraggable] = useState<TeamMember | null>(null);
     const [selectedTask, setSelectedTask] = useState<TaskCardData | null>(null);
+    const [isRefreshing, setIsRefreshing] = useState(false);
+    // Roster-side team filter (independent from card filter)
+    const [rosterTeams, setRosterTeams] = useState<string[]>(['전체']);
 
     // ─── Helper Functions ───
     const toggleFilter = React.useCallback((
         prev: string[],
-        item: string,
-        onTeamChange?: () => void
+        item: string
     ) => {
         let next: string[];
         if (item === '전체') {
@@ -57,74 +58,48 @@ export const InstructionBoard = () => {
         } else {
             next = [...prev, item];
         }
-
-        if (onTeamChange) onTeamChange();
         return next;
     }, []);
 
-    const handleTeamClick = React.useCallback((teamKey: string) => {
-        setInstructionBoardTeams(prev => toggleFilter(prev, teamKey, () => setInstructionBoardJobs(['전체'])));
-    }, [toggleFilter, setInstructionBoardTeams, setInstructionBoardJobs]);
+    const handleCardTeamClick = React.useCallback((teamKey: string) => {
+        setInstructionBoardTeams(prev => toggleFilter(prev, teamKey));
+    }, [toggleFilter, setInstructionBoardTeams]);
 
-    const handleJobClick = React.useCallback((jobKey: string) => {
-        setInstructionBoardJobs(prev => toggleFilter(prev, jobKey));
-    }, [toggleFilter, setInstructionBoardJobs]);
+    const handleRosterTeamClick = React.useCallback((teamKey: string) => {
+        setRosterTeams(prev => toggleFilter(prev, teamKey));
+    }, [toggleFilter]);
 
-    // Sync with global context only on initial mount or when explicitly needed?
-    // User wants independence, so let's keep them as local state initialized from context.
+    // All members for assignment display (always full roster, never filtered)
+    const allMembers = useMemo(() => {
+        return Object.values(TEAM_ROSTERS).flat();
+    }, []);
 
-    // 2. Computed Data
-    const currentTeamJobs = useMemo(() => {
-        if (instructionBoardTeams.includes('전체')) {
-            const allJobs = new Set<string>();
-            Object.values(teams).forEach(t => t.jobs.forEach(j => allJobs.add(j)));
-            return Array.from(allJobs);
-        }
-        const jobs = new Set<string>();
-        instructionBoardTeams.forEach(t => {
-            teams[t]?.jobs.forEach(j => jobs.add(j));
-        });
-        return Array.from(jobs);
-    }, [instructionBoardTeams, teams]);
-
-    const teamMembers = useMemo(() => {
-        const rawMembers = instructionBoardTeams.includes('전체')
+    // Roster members (filtered by rosterTeams)
+    const rosterMembers = useMemo(() => {
+        const rawMembers = rosterTeams.includes('전체')
             ? Object.values(TEAM_ROSTERS).flat()
-            : instructionBoardTeams.flatMap(t => TEAM_ROSTERS[t] || []);
+            : rosterTeams.flatMap(t => TEAM_ROSTERS[t] || []);
 
         return [...rawMembers].sort((a, b) => {
-            // 1. Availability Sort (working first, break/off last)
-            const getPriority = (status: string) => {
-                if (status === 'working') return 0;
-                return 1; // break, off
-            };
-
+            const getPriority = (status: string) => status === 'working' ? 0 : 1;
             const priorityA = getPriority(a.status);
             const priorityB = getPriority(b.status);
-
-            if (priorityA !== priorityB) {
-                return priorityA - priorityB;
-            }
-
-            // 2. Alphabetical Sort (가나다 순)
+            if (priorityA !== priorityB) return priorityA - priorityB;
             return a.name.localeCompare(b.name, 'ko');
         });
-    }, [instructionBoardTeams]);
+    }, [rosterTeams]);
 
-    // Transform RegisteredTpos to TaskCardData structure with Stages
+    // Transform RegisteredTpos to TaskCardData (filtered by card team filter, no job filter)
     const activeTasks: TaskCardData[] = useMemo(() => {
         if (!registeredTpos) return [];
 
         const isTeamMatch = (t: string) => instructionBoardTeams.includes('전체') || instructionBoardTeams.includes(t);
-        const isJobMatch = (j: string) => instructionBoardJobs.includes('전체') || instructionBoardJobs.includes(j);
 
         const filterTask = (t: RegisteredTpo) =>
             t.workplace === instructionBoardWorkplace &&
-            isTeamMatch(t.team) &&
-            isJobMatch(t.job);
+            isTeamMatch(t.team);
 
-        // Real Deployed Tasks from DB only
-        return registeredTpos.filter(filterTask).flatMap(tpo => {
+        const regularTasks = registeredTpos.filter(filterTask).flatMap(tpo => {
             if (!tpo.setupTasks || tpo.setupTasks.length === 0) return [];
 
             return tpo.setupTasks
@@ -139,14 +114,37 @@ export const InstructionBoard = () => {
                         .map(job => job.assignee!)
                 }));
         });
-    }, [instructionBoardWorkplace, instructionBoardTeams, instructionBoardJobs, jobInstructions, registeredTpos, deployedTaskGroupIds]);
+
+        // Ad-hoc tasks (manually added, no taskGroupId)
+        const adhocJobs = jobInstructions.filter(job =>
+            (job.status === 'waiting' || job.status === 'in_progress') &&
+            job.taskGroupId === null &&
+            job.targetTeam &&
+            isTeamMatch(job.targetTeam)
+        );
+
+        const adhocTasks: TaskCardData[] = adhocJobs.map(job => ({
+            id: -job.id, // negative id for custom ad-hoc tasks to avoid collision with group id
+            tpo: { time: '업무중' as const, place: '기타/단발성 업무', occasion: job.subject },
+            workplace: instructionBoardWorkplace,
+            team: job.targetTeam,
+            job: '단발성 지시',
+            stage: 'during' as any,
+            criteria: { checklist: job.subject, standards: [], expectedOutcome: job.description, items: [] },
+            displayItems: job.description ? [{ content: job.description }] : [],
+            assignedMemberIds: job.assignee ? [job.assignee] : [],
+            matching: { evidence: '단발성 지시', method: '-' }
+        }));
+
+        return [...regularTasks, ...adhocTasks];
+    }, [instructionBoardWorkplace, instructionBoardTeams, jobInstructions, registeredTpos, deployedTaskGroupIds]);
 
 
     // 3. DnD Sensors
     const sensors = useSensors(
         useSensor(PointerSensor, {
             activationConstraint: {
-                distance: 8, // Require 8px movement to start drag (prevents accidental clicks)
+                distance: 8,
             }
         })
     );
@@ -167,7 +165,6 @@ export const InstructionBoard = () => {
             const taskIdStr = over.id as string;
             const member = active.data.current.member as TeamMember;
 
-            // Check if dropped on a task
             if (taskIdStr.startsWith('task-')) {
                 const taskId = parseInt(taskIdStr.replace('task-', ''));
                 const task = activeTasks.find(t => t.id === taskId);
@@ -185,7 +182,6 @@ export const InstructionBoard = () => {
                     return;
                 }
 
-                // Persist assignment to DB in real-time
                 assignMemberToTask(taskId, member.name);
             }
         }
@@ -199,19 +195,75 @@ export const InstructionBoard = () => {
         setSelectedTask(task);
     }, []);
 
-    const handleBatchDeploy = async () => {
-        await batchDeployTasks();
+    const handleRefresh = async () => {
+        setIsRefreshing(true);
+        if (fetchJobInstructions) {
+            await fetchJobInstructions();
+        }
+        setIsRefreshing(false);
     };
 
-    const dropAnimation: DropAnimation = useMemo(() => ({
-        sideEffects: defaultDropAnimationSideEffects({
-            styles: {
-                active: {
-                    opacity: '0.5',
-                },
-            },
-        }),
-    }), []);
+    const handleUpdateImage = async (itemId: number | undefined, file: File) => {
+        if (!itemId) {
+            addToast('항목 ID를 찾을 수 없습니다.', 'error');
+            return;
+        }
+
+        try {
+            const { supabase } = await import('../../../utils/supabaseClient');
+
+            // 1. Upload image to 'evidence-photos' bucket (reusing existing bucket for simplicity)
+            const fileExt = file.name.split('.').pop();
+            const fileName = `guide_${Date.now()}_${Math.random()}.${fileExt}`;
+            const { error: uploadError } = await supabase.storage.from('evidence-photos').upload(fileName, file);
+
+            if (uploadError) throw uploadError;
+
+            // 2. Get public URL
+            const { data: { publicUrl } } = supabase.storage.from('evidence-photos').getPublicUrl(fileName);
+
+            // 3. Update DB
+            const { error: dbError } = await supabase
+                .from('checklist_items')
+                .update({ reference_image_url: publicUrl })
+                .eq('id', itemId);
+
+            if (dbError) throw dbError;
+
+            // 4. Update local state to reflect UI immediately
+            setSelectedTask(prev => {
+                if (!prev) return null;
+                const updatedItems = (prev.displayItems || prev.criteria.items || []).map((item: any) =>
+                    item.id === itemId ? { ...item, imageUrl: publicUrl } : item
+                );
+                return { ...prev, displayItems: updatedItems };
+            });
+
+            addToast('표준 가이드 이미지가 등록되었습니다.', 'success');
+        } catch (error) {
+            console.error('Error updating image:', error);
+            addToast('이미지 등록 중 오류가 발생했습니다.', 'error');
+        }
+    };
+
+    // ─── Drop Animation ───
+    const dropAnimation: DropAnimation = {
+        sideEffects: defaultDropAnimationSideEffects({ styles: { active: { opacity: '0.4' } } }),
+    };
+
+    // Shared chip style builder
+    const chipStyle = (isActive: boolean, isJob: boolean = false) => ({
+        padding: '6px 14px',
+        borderRadius: '9999px',
+        backgroundColor: isActive ? colors.primaryBlue : 'white',
+        border: isActive ? `1px solid ${colors.primaryBlue}` : `1px solid ${colors.border}`,
+        color: isActive ? 'white' : colors.textGray,
+        fontSize: '0.75rem',
+        fontWeight: 'bold' as const,
+        cursor: 'pointer',
+        whiteSpace: 'nowrap' as const,
+        transition: 'all 0.2s'
+    });
 
     return (
         <DndContext
@@ -226,14 +278,13 @@ export const InstructionBoard = () => {
                 border: `1px solid ${colors.border}`,
                 overflow: 'hidden'
             }}>
-                {/* Top Control Bar (3 Rows for Perfect Alignment) */}
+                {/* Top Bar: Workplace and Refresh */}
                 <div style={{
                     padding: '12px 20px', borderBottom: `1px solid ${colors.border}`,
-                    display: 'flex', flexDirection: 'column', gap: '14px',
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                     backgroundColor: 'white'
                 }}>
-                    {/* Row 1: Workplace (Independent) */}
-                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                         <select
                             value={instructionBoardWorkplace}
                             onChange={(e) => setInstructionBoardWorkplace(e.target.value)}
@@ -244,138 +295,74 @@ export const InstructionBoard = () => {
                                 outline: 'none'
                             }}
                         >
-                            <option value="소노벨 천안">📍 소노벨 천안</option>
-                            <option value="소노벨 경주">📍 소노벨 경주</option>
+                            {workplaces.map(wp => (
+                                <option key={wp} value={wp}>📍 {wp}</option>
+                            ))}
                         </select>
                     </div>
 
-                    {/* Row 2: Team Chips & Deploy Button */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        {/* Team Chips */}
-                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                            <button
-                                onClick={() => handleTeamClick('전체')}
-                                style={{
-                                    padding: '6px 14px',
-                                    borderRadius: '20px',
-                                    border: `1px solid ${instructionBoardTeams.includes('전체') ? colors.primaryBlue : colors.border}`,
-                                    backgroundColor: instructionBoardTeams.includes('전체') ? colors.primaryBlue : 'white',
-                                    color: instructionBoardTeams.includes('전체') ? 'white' : colors.textGray,
-                                    fontSize: '0.8125rem',
-                                    fontWeight: 'bold',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.2s',
-                                    boxShadow: instructionBoardTeams.includes('전체') ? '0 2px 4px rgba(0, 0, 0, 0.1)' : 'none'
-                                }}
-                            >
-                                전체
-                            </button>
-                            {Object.entries(teams).map(([key, info]) => {
-                                const isActive = instructionBoardTeams.includes(key);
-                                return (
-                                    <button
-                                        key={key}
-                                        onClick={() => handleTeamClick(key)}
-                                        style={{
-                                            padding: '6px 14px',
-                                            borderRadius: '20px',
-                                            border: `1px solid ${isActive ? colors.primaryBlue : colors.border}`,
-                                            backgroundColor: isActive ? colors.primaryBlue : 'white',
-                                            color: isActive ? 'white' : colors.textGray,
-                                            fontSize: '0.8125rem',
-                                            fontWeight: 'bold',
-                                            cursor: 'pointer',
-                                            transition: 'all 0.2s',
-                                            boxShadow: isActive ? '0 2px 4px rgba(0, 0, 0, 0.1)' : 'none'
-                                        }}
-                                    >
-                                        {info.label}
-                                    </button>
-                                );
-                            })}
-                        </div>
-
-                        <button
-                            onClick={handleBatchDeploy}
-                            style={{
-                                backgroundColor: colors.primaryBlue,
-                                color: 'white', padding: '8px 20px', borderRadius: '8px',
-                                fontWeight: 'bold', fontSize: '0.875rem',
-                                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                                border: 'none', cursor: 'pointer',
-                                display: 'flex', alignItems: 'center', gap: '8px',
-                                transition: 'all 0.2s'
-                            }}
-                        >
-                            <Send size={16} />
-                            업무지시 배정
-                        </button>
-                    </div>
-
-                    {/* Row 3: Job Chips */}
-                    <div style={{ display: 'flex', alignItems: 'center' }}>
-                        <div style={{
-                            display: 'flex', gap: '6px', alignItems: 'center',
-                            overflowX: 'auto', flex: 1
-                        }}>
-                            <button
-                                onClick={() => handleJobClick('전체')}
-                                style={{
-                                    padding: '5px 12px',
-                                    borderRadius: '15px',
-                                    border: `1px solid ${instructionBoardJobs.includes('전체') ? '#64748B' : colors.border}`,
-                                    backgroundColor: instructionBoardJobs.includes('전체') ? '#64748B' : 'white',
-                                    color: instructionBoardJobs.includes('전체') ? 'white' : '#64748B',
-                                    fontSize: '0.75rem',
-                                    fontWeight: 'bold',
-                                    cursor: 'pointer',
-                                    whiteSpace: 'nowrap'
-                                }}
-                            >
-                                전체
-                            </button>
-                            {currentTeamJobs.map(j => {
-                                const isActive = instructionBoardJobs.includes(j);
-                                return (
-                                    <button
-                                        key={j}
-                                        onClick={() => handleJobClick(j)}
-                                        style={{
-                                            padding: '5px 12px',
-                                            borderRadius: '15px',
-                                            border: `1px solid ${isActive ? colors.primaryBlue : colors.border}`,
-                                            backgroundColor: isActive ? '#EFF6FF' : 'white',
-                                            color: isActive ? colors.primaryBlue : colors.textGray,
-                                            fontSize: '0.75rem',
-                                            fontWeight: isActive ? 'bold' : 'normal',
-                                            cursor: 'pointer',
-                                            whiteSpace: 'nowrap',
-                                            transition: 'all 0.2s'
-                                        }}
-                                    >
-                                        {j}
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    </div>
+                    <button
+                        onClick={handleRefresh}
+                        disabled={isRefreshing}
+                        style={{
+                            display: 'flex', alignItems: 'center', gap: '6px',
+                            padding: '6px 12px', borderRadius: '6px',
+                            backgroundColor: 'white', border: `1px solid ${colors.border}`,
+                            color: colors.textDark, fontSize: '0.8rem', fontWeight: 'bold',
+                            cursor: isRefreshing ? 'not-allowed' : 'pointer',
+                            opacity: isRefreshing ? 0.7 : 1,
+                            transition: 'all 0.2s'
+                        }}
+                    >
+                        <RefreshCw size={14} className={isRefreshing ? 'animate-spin' : ''} />
+                        새로고침
+                    </button>
                 </div>
 
                 {/* Main Split Layout */}
                 <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
-                    {/* LEFT: Roster (Source) */}
-                    <div style={{ width: '280px', minWidth: '280px' }}>
-                        <TeamRosterPanel members={teamMembers} jobFilter={instructionBoardJobs} />
+                    {/* LEFT: Roster Panel with its own team filter */}
+                    <div style={{ width: '280px', minWidth: '280px', display: 'flex', flexDirection: 'column', borderRight: `1px solid ${colors.border}` }}>
+                        {/* Roster Team Filter */}
+                        <div style={{ padding: '10px 12px', borderBottom: `1px solid ${colors.border}`, backgroundColor: '#FAFBFC' }}>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                                <button onClick={() => handleRosterTeamClick('전체')} style={chipStyle(rosterTeams.includes('전체'), false)}>
+                                    전체
+                                </button>
+                                {Object.entries(teams).map(([key, info]) => (
+                                    <button key={key} onClick={() => handleRosterTeamClick(key)} style={chipStyle(rosterTeams.includes(key), false)}>
+                                        {info.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                        <TeamRosterPanel members={rosterMembers} />
                     </div>
 
-                    {/* RIGHT: Tasks (Target) */}
-                    <TaskTemplateBoard
-                        tasks={activeTasks}
-                        assignments={{}} // Not used anymore as assignees are integrated into tasks
-                        members={teamMembers}
-                        onUnassign={handleUnassign}
-                        onViewDetail={handleViewDetail}
-                    />
+                    {/* RIGHT: Card Area with its own team filter */}
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                        {/* Card Team Filter */}
+                        <div style={{ padding: '10px 16px', borderBottom: `1px solid ${colors.border}`, backgroundColor: '#FAFBFC' }}>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                                <button onClick={() => handleCardTeamClick('전체')} style={chipStyle(instructionBoardTeams.includes('전체'))}>
+                                    전체
+                                </button>
+                                {Object.entries(teams).map(([key, info]) => (
+                                    <button key={key} onClick={() => handleCardTeamClick(key)} style={chipStyle(instructionBoardTeams.includes(key))}>
+                                        {info.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                        {/* Task Cards */}
+                        <TaskTemplateBoard
+                            tasks={activeTasks}
+                            assignments={{}}
+                            members={allMembers}
+                            onUnassign={handleUnassign}
+                            onViewDetail={handleViewDetail}
+                        />
+                    </div>
                 </div>
             </div>
 
@@ -384,6 +371,19 @@ export const InstructionBoard = () => {
                     data={selectedTask}
                     onClose={() => setSelectedTask(null)}
                     hideActionButton={true}
+                    onSaveDescription={async (desc: string) => {
+                        const { supabase } = await import('../../../utils/supabaseClient');
+                        const { error } = await supabase
+                            .from('job_instructions')
+                            .update({ description: desc })
+                            .eq('task_group_id', selectedTask.id);
+                        if (!error) {
+                            addToast('추가사항이 저장되었습니다.', 'success');
+                        } else {
+                            addToast('저장 중 오류가 발생했습니다.', 'error');
+                        }
+                    }}
+                    onUpdateImage={handleUpdateImage}
                 />
             )}
 

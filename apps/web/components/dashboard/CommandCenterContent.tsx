@@ -7,7 +7,7 @@ import { supabase } from '../../utils/supabaseClient';
 import { JobInstructionDB, JobInstructionStatus } from '@csmac/types';
 import { CommandCenterCard } from './commandcenter/CommandCenterCard';
 import { TEAMS } from '../../constants/pdca-data';
-import { Download, Table, Package, CheckSquare, ShieldCheck, BarChart3, RotateCw, Clock, AlertCircle } from 'lucide-react';
+import { Download, Table, Package, CheckSquare, ShieldCheck, BarChart3, RotateCw, Clock, AlertCircle, ClipboardList } from 'lucide-react';
 import { exportToCsv } from '../../utils/csvExport';
 
 // Column definitions for the kanban board
@@ -15,19 +15,19 @@ const KANBAN_COLUMNS = [
     {
         key: 'before',
         label: '업무 전 (Plan)',
-        icon: '📝',
+        icon: <ClipboardList size={18} color="#64748B" />,
         statuses: ['waiting'] as JobInstructionStatus[],
     },
     {
         key: 'doing',
-        label: '실행 중 (Do)',
-        icon: '⚡',
+        label: '진행 중 (Do)',
+        icon: <Clock size={18} color="#2563EB" />,
         statuses: ['in_progress', 'delayed'] as JobInstructionStatus[],
     },
     {
         key: 'after',
         label: '완료/검증 (Check)',
-        icon: '🏁',
+        icon: <ShieldCheck size={18} color="#10B981" />,
         statuses: ['completed', 'non_compliant'] as JobInstructionStatus[],
     },
 ];
@@ -104,8 +104,8 @@ export default function CommandCenterContent() {
     // Summary stats
     const stats = {
         total: instructions.length,
+        inProgress: instructions.filter(i => i.status === 'in_progress').length,
         completed: instructions.filter(i => i.status === 'completed').length,
-        delayed: instructions.filter(i => i.status === 'delayed').length,
         nonCompliant: instructions.filter(i => i.status === 'non_compliant' || i.verification_result === 'fail').length,
     };
 
@@ -143,31 +143,6 @@ export default function CommandCenterContent() {
                 </button>
             </div>
 
-            {/* Quick Navigation to PDCA Sub-modules */}
-            <div style={{ display: 'flex', gap: '4px', marginBottom: '24px', overflowX: 'auto', paddingBottom: '4px' }}>
-                {[
-                    { label: 'TPO 업무기준 설정', phase: 'plan' as const },
-                    { label: '업무지시 라이브러리', phase: 'do' as const, subPhase: 'library' },
-                    { label: '업무지시', phase: 'do' as const, subPhase: 'instruction' },
-                    { label: 'TPO 이행근거 검증', phase: 'check' as const },
-                    { label: 'KPI 분석', phase: 'act' as const },
-                ].map(nav => (
-                    <button
-                        key={nav.label}
-                        onClick={() => { setActivePhase(nav.phase); if (nav.subPhase) setActiveDoSubPhase(nav.subPhase); }}
-                        style={{
-                            padding: '8px 16px', borderRadius: '20px', fontSize: '13px', fontWeight: 600,
-                            whiteSpace: 'nowrap', cursor: 'pointer', transition: '0.2s',
-                            color: '#64748B', border: '1px solid transparent',
-                            backgroundColor: 'transparent',
-                        }}
-                        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.03)'; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
-                    >
-                        {nav.label}
-                    </button>
-                ))}
-            </div>
 
             {/* Summary Stats + Refresh */}
             <div style={{
@@ -185,8 +160,17 @@ export default function CommandCenterContent() {
                                 <Table size={18} color={colors.primaryBlue} />
                             </div>
                             <div>
-                                <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Jobs</div>
+                                <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>전체 업무</div>
                                 <div style={{ fontSize: '18px', fontWeight: 800, color: colors.textDark }}>{stats.total}</div>
+                            </div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <div style={{ backgroundColor: '#DBEAFE', padding: '10px', borderRadius: '12px' }}>
+                                <Clock size={18} color="#2563EB" />
+                            </div>
+                            <div>
+                                <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>진행 중</div>
+                                <div style={{ fontSize: '18px', fontWeight: 800, color: '#2563EB' }}>{stats.inProgress}</div>
                             </div>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -194,17 +178,8 @@ export default function CommandCenterContent() {
                                 <ShieldCheck size={18} color="#10B981" />
                             </div>
                             <div>
-                                <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Completed</div>
+                                <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>검증 완료</div>
                                 <div style={{ fontSize: '18px', fontWeight: 800, color: '#10B981' }}>{stats.completed}</div>
-                            </div>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <div style={{ backgroundColor: '#FEF2F2', padding: '10px', borderRadius: '12px' }}>
-                                <Clock size={18} color="#EF4444" />
-                            </div>
-                            <div>
-                                <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Delayed</div>
-                                <div style={{ fontSize: '18px', fontWeight: 800, color: '#EF4444' }}>{stats.delayed}</div>
                             </div>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -212,7 +187,7 @@ export default function CommandCenterContent() {
                                 <AlertCircle size={18} color="#F59E0B" />
                             </div>
                             <div>
-                                <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Non-Compliant</div>
+                                <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>조치 필요</div>
                                 <div style={{ fontSize: '18px', fontWeight: 800, color: '#F59E0B' }}>{stats.nonCompliant}</div>
                             </div>
                         </div>
@@ -270,7 +245,7 @@ export default function CommandCenterContent() {
                     <div key={column.key} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 8px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <span style={{ fontSize: '18px' }}>{column.icon}</span>
+                                <span style={{ display: 'flex', alignItems: 'center' }}>{column.icon}</span>
                                 <h3 style={{ fontSize: '14px', fontWeight: 700, color: colors.textDark, margin: 0 }}>{column.label}</h3>
                                 <span style={{
                                     fontSize: '11px', fontWeight: 700, color: '#94A3B8',

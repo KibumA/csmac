@@ -43,10 +43,15 @@ export const ActProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const [timeRange, setTimeRange] = useState<'today' | 'weekly' | 'monthly'>('today');
 
     const fetchActData = React.useCallback(async () => {
-        const { data, error } = await supabase
+        let query = supabase
             .from('job_instructions')
-            .select('*')
-            .eq('team', team);
+            .select('*');
+
+        if (team !== '전체') {
+            query = query.eq('team', team);
+        }
+
+        const { data, error } = await query;
 
         if (data) {
             setJobData(data);
@@ -73,27 +78,32 @@ export const ActProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         });
     }, []);
 
-    const resolveActionItem = async (id: number, updates?: Partial<ActionPlanItem>) => {
+    const resolveActionItem = async (id: number, updates?: Partial<ActionPlanItem> & { assignee?: string | null }) => {
         try {
+            const updatePayload: any = {
+                status: updates?.status !== undefined ? updates.status : 'completed',
+                verification_result: updates?.verificationResult !== undefined ? updates.verificationResult : 'pass',
+                ai_score: updates?.aiScore,
+                ai_analysis: updates?.aiAnalysis
+            };
+
+            if (updates && 'assignee' in updates) {
+                updatePayload.assignee = updates.assignee;
+            }
+
             // Attempt DB update but anticipate missing columns
             const { error: dbError } = await supabase
                 .from('job_instructions')
-                .update({
-                    status: updates?.status || 'completed',
-                    verification_result: updates?.verificationResult || 'pass',
-                    ai_score: updates?.aiScore,
-                    ai_analysis: updates?.aiAnalysis
-                    // feedback_comment is intentionally omitted if risky, 
-                    // or we can try/catch a second update for extended fields.
-                })
+                .update(updatePayload)
                 .eq('id', id);
 
             if (dbError) {
-                console.warn('Primary DB update warning (possibly missing columns):', dbError);
+                console.error('Primary DB update error:', dbError);
+                throw dbError; // throw it so the catch block catches it and shows a toast
             }
 
             // Try the secondary update for feedback_comment separately to avoid breaking the whole flow
-            if (updates?.feedbackComment) {
+            if (updates && 'feedbackComment' in updates) {
                 const { error: fbError } = await supabase
                     .from('job_instructions')
                     .update({ feedback_comment: updates.feedbackComment })

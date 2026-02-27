@@ -6,7 +6,6 @@ import { User, Coffee, Home, GripVertical } from 'lucide-react';
 
 interface TeamRosterPanelProps {
     members: TeamMember[];
-    jobFilter: string[];
 }
 
 const DraggableMemberCard = ({ member }: { member: TeamMember }) => {
@@ -97,29 +96,27 @@ const DraggableMemberCard = ({ member }: { member: TeamMember }) => {
     );
 };
 
-export const TeamRosterPanel: React.FC<TeamRosterPanelProps> = ({ members, jobFilter }) => {
-    // Filter logic: If '전체' or match role
-    const filteredMembers = members.filter(m => jobFilter.includes('전체') || jobFilter.includes(m.role));
-    const onlineCount = filteredMembers.filter(m => m.status === 'working').length;
+export const TeamRosterPanel: React.FC<TeamRosterPanelProps> = ({ members }) => {
+    const onlineCount = members.filter(m => m.status === 'working').length;
 
     return (
-        <div style={{ height: '100%', display: 'flex', flexDirection: 'column', backgroundColor: '#F8F9FA', borderRight: `1px solid ${colors.border}` }}>
+        <div style={{ height: '100%', display: 'flex', flexDirection: 'column', backgroundColor: '#F8F9FA' }}>
             <div style={{ padding: '20px', borderBottom: `1px solid ${colors.border}`, backgroundColor: 'white' }}>
                 <h3 style={{ fontWeight: 'bold', fontSize: '1.125rem', color: '#1E293B', marginBottom: '4px' }}>팀원 로스터</h3>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#6B7280' }}>
-                    <span>총원 {filteredMembers.length}명</span>
+                    <span>총원 {members.length}명</span>
                     <span style={{ color: '#059669', fontWeight: 'bold' }}>근무중 {onlineCount}명</span>
                 </div>
             </div>
 
             <div style={{ flex: 1, padding: '16px', overflowY: 'auto' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    {filteredMembers.map(member => (
+                    {members.map(member => (
                         <DraggableMemberCard key={member.id} member={member} />
                     ))}
                 </div>
 
-                {filteredMembers.length === 0 && (
+                {members.length === 0 && (
                     <div style={{ textAlign: 'center', padding: '40px 0', color: '#9CA3AF', fontSize: '0.875rem' }}>
                         해당 직무 팀원이 없습니다.
                     </div>

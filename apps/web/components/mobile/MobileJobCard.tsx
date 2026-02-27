@@ -70,19 +70,6 @@ export const MobileJobCard: React.FC<MobileJobCardProps> = ({ task, onClick }) =
                 {task.subject}
             </h3>
 
-            <p style={{
-                margin: 0,
-                fontSize: '0.9rem',
-                color: colors.textGray,
-                lineHeight: '1.4',
-                display: '-webkit-box',
-                WebkitLineClamp: 2,
-                WebkitBoxOrient: 'vertical',
-                overflow: 'hidden'
-            }}>
-                {task.description}
-            </p>
-
             {task.feedbackComment && (
                 <div style={{
                     marginTop: '10px', padding: '8px 12px', backgroundColor: '#fff1f2',
@@ -100,3 +87,4 @@ export const MobileJobCard: React.FC<MobileJobCardProps> = ({ task, onClick }) =
         </div>
     );
 };
+
